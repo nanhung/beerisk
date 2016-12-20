@@ -32,7 +32,7 @@ Mean_conso_EU <- mcdata(Boot_EU$estim$meanlog, type="U")
 Sd_conso_EU <- mcdata(Boot_EU$estim$sdlog, type="U")
 
 conso1_EU <- mcstoc(rlnorm, type="VU", meanlog= Mean_conso_EU, sdlog= Sd_conso_EU, 
-                    rtrunc=TRUE, linf=0, lsup=4000)
+                    rtrunc=TRUE, linf=0, lsup=10000)
 conso0 <- mcdata(0, type="V")
 plot(conso1_EU)
 
@@ -45,7 +45,8 @@ colnames(dose) <- c("name","dose")
 
 #plot exposure dose
 ggplot(dose, aes(x=dose, fill=name))+
-  geom_histogram(aes(y=..density..), alpha=0.8, colour="darkgrey", fill="grey", position="identity")+
+  geom_histogram(aes(y=..density..), alpha=0.8, colour="darkgrey", fill="grey", 
+                 position="identity", bins = 50)+
   scale_x_log10(breaks=c(1,10,100,1000,10000), limits = c(0.01, 100000))+
   theme(axis.title.x = element_text(size=16),
         axis.text.x  = element_text(vjust=0.5, size=16),
@@ -54,8 +55,4 @@ ggplot(dose, aes(x=dose, fill=name))+
   ylab("Density")+xlab(bquote('Dose ('*mu*g~L^-1*')'))+theme(legend.position = "none")+
   geom_density(fill="white", alpha = 0.05)
 
-#
-Mortality.risk <- 0.023*conso1_EU+8.8
-summary(Mortality.risk)
-plot(Mortality.risk, xlab="Mortality (%)")
 
