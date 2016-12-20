@@ -12,7 +12,7 @@ x <- c(0, 600, 1600, 3000, 4000, 6000)
 y <- c(0, 0, 0, 22.6, 36.4, 51.6)
 Data1 <- data.frame(x, y)
 Data1
-mod1 <- nls(y ~ 100*x^b/(a^b+x^b), data = Data1, start=list(a=3000,b=1))
+mod1 <- nls(y ~ 100*x^b/(a^b+x^b), data = Data1, start=list(a=5540,b=2.2))
 summary(mod1)
 RSS.p<-sum(residuals(mod1)^2)
 TSS<-sum((y-mean(y))^2)
@@ -29,6 +29,12 @@ y <- c(0, 0.00233,0.02614,0.04231,0.11712,0.16348,0.24169)
 Data2 <- data.frame(x,y)
 Data2
 mod2 <- nls(y ~ c*x^b/(a^b+x^b), data = Data2, start=list(a=2800,b=3, c=0.25))
+summary(mod2)
+RSS.p<-sum(residuals(mod2)^2)
+TSS<-sum((y-mean(y))^2)
+r.squared<-1-(RSS.p/TSS)
+r.squared
+
 # test 95% CI
 plotFit(mod2,interval="prediction",ylim=c(0,0.3),pch=19,col.pred='light grey',shade=T,
         xlab=expression('Dose ('*mu*g~L^-1*')'), ylab= "Mortality rate (per day)")
@@ -48,4 +54,4 @@ p3 <- ggplot(Data3, aes(y=rate_ratio, x=day)) + facet_grid(. ~ parameter) + stat
   ylab("Rate ratio")+xlab("Time (day)")
 
 ##Use grid.arrange(), from the gridExtra package
-grid.arrange(p1, p2,p3, ncol=1)
+grid.arrange(p1,p2,p3, ncol=1)
