@@ -7,6 +7,7 @@ require(gridExtra)
 library(ggplot2)
 library(mc2d)
 library(EnvStats)
+require(deSolve)
 
 dat <- read.table("exposure.dat", head = T)
 EU_non0 <- subset(dat, adj>0.1)
@@ -24,7 +25,7 @@ Boot_EU <- bootdist(fitln_EU, bootmethod="param", niter=1001)
 
 ## mc2d ----
 # Specification of uncertainty and variability dimensions
-ndvar(1001)
+ndvar(101)
 ndunc(1001)
 
 # Uncertainty on the distribution parameters
@@ -35,6 +36,7 @@ conso1_EU <- mcstoc(rlnorm, type="VU", meanlog= Mean_conso_EU, sdlog= Sd_conso_E
                     rtrunc=TRUE, linf=0, lsup=10000)
 conso0 <- mcdata(0, type="V")
 plot(conso1_EU)
+conso1_EU_val <- unclass(conso1_EU)
 
 ## data manipulate
 pzero_eu <- sum(dat$adj < 0.2)/length(dat$adj)
@@ -44,8 +46,8 @@ dose<-data.frame(rep(deparse(substitute(v_EU)), length(v_EU)), v_EU)
 colnames(dose) <- c("name","dose")
 
 #plot exposure dose
-data <- c(unname(quantile(conso1_EU, c(0.6))), unname(quantile(conso1_EU, c(0.7))), unname(quantile(conso1_EU, c(0.8))), unname(quantile(conso1_EU, c(0.95))))
-percentile <- c("60 Percentile", "70 Percentile", "80 Percentile", "95 Percentile")
+data <- c(unname(quantile(conso1_EU_val, c(0.5))), unname(quantile(conso1_EU_val, c(0.75))), unname(quantile(conso1_EU_val, c(0.8))), unname(quantile(conso1_EU_val, c(0.95))))
+percentile <- c("50 Percentile", "75 Percentile", "80 Percentile", "95 Percentile")
 df1 <- data.frame(data, percentile)
 
 Ex <- ggplot(dose, aes(x=dose, fill=name))+
@@ -56,7 +58,7 @@ Ex <- ggplot(dose, aes(x=dose, fill=name))+
         axis.text.x  = element_text(vjust=0.5, size=16),
         axis.title.y = element_text(size=16),
         axis.text.y  = element_text(vjust=0.5, size=16))+
-  ylab("Density")+xlab(bquote('Dose ('*mu*g~L^-1*')'))+theme(legend.position = "none")+
+  ylab("Probability")+xlab(bquote('Dose ('*mu*g~L^-1*')'))+theme(legend.position = "none")+
   geom_density(fill="white", alpha = 0.05)+
   ggtitle("Simulated exposure dose")+
   geom_vline(df1, mapping=aes(xintercept=data), color="red") 
@@ -85,9 +87,10 @@ bee.pop <- function(t, state, parms) {
          R <- amin-s*F/(H+F)+amax*(b^2/(b^2+f^2))
          
          # compute derivatives
+         ylag <- ifelse((t - 0) <= 0, 2000, lagvalue(t - 0)[2])
          df <- c1*F-ga*(H+F)-gb*B
          dB <- l1*S-fi*B
-         dH <- fi*B-R*H
+         dH <- fi*ylag-R*H
          dF <- R*H-(m1+md)*F
          
          # combine results
@@ -98,9 +101,8 @@ bee.pop <- function(t, state, parms) {
 # set parameters
 parms <- function(x){
   c(c0=0.1, l0=2000, amin=0.25, amax=0.25, s=0.75,m0=0.1, 
-    ga=0.007, gb=0.018, fi=0.1, b=500, v=5000, d=unname(quantile(conso1_EU, c(x))))
+    ga=0.007, gb=0.018, fi=0.1, b=500, v=5000, d=unname(quantile(conso1_EU_val, c(x))))
 }
-
 
 # set states
 state = c(f = 3000, B = 2000, H = 2000, F = 1000)
@@ -109,10 +111,10 @@ state = c(f = 3000, B = 2000, H = 2000, F = 1000)
 times = seq(0, 1000, by = 1)
 
 # ode output
-out.5 <- ode(y = state, times = times, func = bee.pop, parms = parms(.5))
-out.75 <- ode(y = state, times = times, func = bee.pop, parms = parms(.75))
-out.9 <- ode(y = state, times = times, func = bee.pop, parms = parms(.9))
-out.975 <- ode(y = state, times = times, func = bee.pop, parms = parms(.975))
+out.5 <- dede(y = state, times = times, func = bee.pop, parms = parms(.5))
+out.75 <- dede(y = state, times = times, func = bee.pop, parms = parms(.75))
+out.8 <- dede(y = state, times = times, func = bee.pop, parms = parms(.8))
+out.975 <- dede(y = state, times = times, func = bee.pop, parms = parms(.95))
 
 ## Makes the data in a more ggplot-friendly format
 stacker <- function(df){
@@ -127,7 +129,7 @@ stacker <- function(df){
 
 gg.dynamic.plot <- function(x,y){
   # Data manipulate
-  guess <- stacker(as.data.frame(ode(y = state, times = times, func = bee.pop, parms = parms(x))))
+  guess <- stacker(as.data.frame(dede(y = state, times = times, func = bee.pop, parms = parms(x))))
   
   # Base plot
   ggplot(guess, aes(x=time, y=population, 
@@ -135,15 +137,27 @@ gg.dynamic.plot <- function(x,y){
                     color=compartments)) + 
     geom_line(aes(colour = compartments), size=1.5) + 
     xlab(" ") + ylab(" ") +
-    theme(legend.position="none") + theme(legend.title=element_blank()) +
+     theme(legend.title=element_blank()) +
     theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
     scale_y_continuous(lim=c(0, y))
 }
 
-E60 <- gg.dynamic.plot(.60, 80000)+ggtitle("Exposure dose at 60 perentile") + ylab("Food Storagrs and Bee Population")
-E70 <- gg.dynamic.plot(.70, 80000)+ggtitle("Exposure dose at 70 perentile") 
-E80 <- gg.dynamic.plot(.80, 80000)+ggtitle("Exposure dose at 80 perentile") + xlab("Time (day)") + ylab("Food Storagrs and Bee Population")
-E95 <- gg.dynamic.plot(.95, 20000)+ggtitle("Exposure dose at 95 perentile") + xlab("Time (day)")
+E50 <- gg.dynamic.plot(.50, 90000)+ggtitle("Exposure dose at 50 perentile") + ylab("Food Storagrs and Bee Population") + theme(legend.position="none")
+E75 <- gg.dynamic.plot(.75, 90000)+ggtitle("Exposure dose at 75 perentile") + theme(legend.position="none")
+E80 <- gg.dynamic.plot(.80, 90000)+ggtitle("Exposure dose at 80 perentile") + xlab("Time (day)") + ylab("Food Storagrs and Bee Population") + theme(legend.position="none")
+E95 <- gg.dynamic.plot(.95, 20000)+ggtitle("Exposure dose at 95 perentile") + xlab("Time (day)") + theme(legend.position=c(.8, .7))
 
 x11(8, 11)
-grid.arrange(Ex, arrangeGrob(E60, E70,ncol=2),arrangeGrob(E80, E95,ncol=2), ncol=1)
+grid.arrange(Ex, arrangeGrob(E50, E75,ncol=2),arrangeGrob(E80, E95,ncol=2), ncol=1)
+
+# 1223 Risk
+EC50<-mcstoc(rnorm, type="VU", 5543.9879, 330.4317)
+n <-mcstoc(rnorm, type="VU", 2.1720, 0.3314)
+Missing_Ratio <- 100*conso1_EU^n/(EC50^n+conso1_EU^n)
+plot(Missing_Ratio, xlab="Missing ratio", ylab="Cumulative probability")
+
+Emax<-mcstoc(rnorm, type="VU", 3.476e-01, 5.594e-02)
+EC50<-mcstoc(rnorm, type="VU", 3.941e+03, 7.193e+02)
+n <-mcstoc(rnorm, type="VU", 2.003, 5.594e-02)
+Mortality_rate <- Emax*conso1_EU^n/(EC50^n+conso1_EU^n)
+plot(Mortality_rate, xlab="Mortality_rate", ylab="Cumulative probability")
