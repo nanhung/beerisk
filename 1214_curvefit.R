@@ -54,4 +54,5 @@ p3 <- ggplot(Data3, aes(y=rate_ratio, x=day)) + facet_grid(. ~ parameter) + stat
   ylab("Rate ratio")+xlab("Time (day)")
 
 ##Use grid.arrange(), from the gridExtra package
+x11(8,11)
 grid.arrange(p1,p2,p3, ncol=1)
