@@ -153,11 +153,112 @@ grid.arrange(Ex, arrangeGrob(E50, E75,ncol=2),arrangeGrob(E80, E95,ncol=2), ncol
 # 1223 Risk
 EC50<-mcstoc(rnorm, type="VU", 5543.9879, 330.4317)
 n <-mcstoc(rnorm, type="VU", 2.1720, 0.3314)
-Missing_Ratio <- 100*conso1_EU^n/(EC50^n+conso1_EU^n)
+Imidacloprid <- mcstoc(rlnorm, type="VU", meanlog= Mean_conso_EU, sdlog= Sd_conso_EU, 
+                    rtrunc=TRUE, linf=0, lsup=10000)
+Missing_Ratio <- 100*Imidacloprid ^n/(EC50^n+Imidacloprid ^n)
 plot(Missing_Ratio, xlab="Missing ratio", ylab="Cumulative probability")
+missmodel <- mc(EC50, n, Imidacloprid, Missing_Ratio)
+tor<-tornado(missmodel)
+plot(tor)
 
+#
 Emax<-mcstoc(rnorm, type="VU", 3.476e-01, 5.594e-02)
 EC50<-mcstoc(rnorm, type="VU", 3.941e+03, 7.193e+02)
 n <-mcstoc(rnorm, type="VU", 2.003, 5.594e-02)
-Mortality_rate <- Emax*conso1_EU^n/(EC50^n+conso1_EU^n)
-plot(Mortality_rate, xlab="Mortality_rate", ylab="Cumulative probability")
+md <- Emax*Imidacloprid^n/(EC50^n+Imidacloprid^n)
+plot(md, xlab="Mortality_rate", ylab="Cumulative probability")
+mormodel <- mc(Emax, EC50, n, Imidacloprid, md)
+tor<-tornado(mormodel)
+plot(tor)
+
+#
+probs <- c(0.025, 0.25, 0.50, 0.75, 0.975)
+quant1 <- as.data.frame(t(apply(Missing_Ratio[,,], 1, quantile, probs = probs)))
+ecdfs1 <- sapply(names(quant1), function(q) ecdf(quant1[[q]]))
+plot(ecdfs1[['75%']], main = '')
+
+
+
+# Find quantile
+quantile(md, c(0.5, 0.6, 0.7, 0.8, 0.9, 0.95))
+
+# Parameters
+l0 <- 2000; v<-5000; amax<-0.25; amin<-0.25; s<-0.75; m0<-0.1; b<-500 
+ra <- 0.007; rb<-0.018; fi<-0.11
+
+t <- 1:365
+
+#
+m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.5))
+mp <- quantile(as.numeric(Missing_Ratio), c(0.5))
+Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
+L <- Q %>% 
+  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
+R50 <- L %>%
+  mutate (r = m1*(q+v)/(l1*q))
+Percentile<- rep(0.5, 365)
+R50<- cbind(R50,Percentile)
+
+
+m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.6))
+mp <- quantile(as.numeric(Missing_Ratio), c(0.7))
+Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
+L <- Q %>% 
+  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
+R60 <- L %>%
+  mutate (r = m1*(q+v)/(l1*q))
+Percentile<- rep(0.6, 365)
+R60<- cbind(R60,Percentile)
+
+m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.7))
+Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
+L <- Q %>% 
+  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
+R70 <- L %>%
+  mutate (r = m1*(q+v)/(l1*q))
+Percentile<- rep(0.7, 365)
+R70<- cbind(R70,Percentile)
+
+m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.8))
+mp <- quantile(as.numeric(Missing_Ratio), c(0.8))
+Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
+L <- Q %>% 
+  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
+R80 <- L %>%
+  mutate (r = m1*(q+v)/(l1*q))
+Percentile<- rep(0.8, 365)
+R80<- cbind(R80,Percentile)
+
+m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.9))
+mp <- quantile(as.numeric(Missing_Ratio), c(0.9))
+Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
+L <- Q %>% 
+  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
+R90 <- L %>%
+  mutate (r = m1*(q+v)/(l1*q))
+Percentile<- rep(0.9, 365)
+R90<- cbind(R90,Percentile)
+
+m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.95))
+mp <- quantile(as.numeric(Missing_Ratio), c(0.95))
+Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
+L <- Q %>% 
+  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
+R95 <- L %>%
+  mutate (r = m1*(q+v)/(l1*q))
+Percentile<- rep(0.95, 365)
+R95<- cbind(R95,Percentile)
+
+data1<-rbind(R95, R90, R80, R70, R60, R50)
+
+# Plot
+ggplot(data1, aes(x=t, y=r, color=Percentile))+
+  geom_line((aes(colour = Percentile)))+
+  scale_y_log10(limits = c(0.05,100))+
+  theme(axis.title.x = element_text(size=16),
+        axis.text.x  = element_text(vjust=0.5, size=16),
+        axis.title.y = element_text(size=16),
+        axis.text.y  = element_text(vjust=0.5, size=16))+
+  geom_hline(aes(yintercept = 1), linetype = "dashed", colour = "red")+
+  theme(legend.position=c(0.8,0.8))+
+  ylab("Risk")+xlab("Time (day)")
