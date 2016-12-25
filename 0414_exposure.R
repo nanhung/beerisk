@@ -4,6 +4,7 @@ if(!require(fitdistrplus)) {
 } 
 
 require(gridExtra)
+require(dplyr)
 library(ggplot2)
 library(mc2d)
 library(EnvStats)
@@ -46,8 +47,8 @@ dose<-data.frame(rep(deparse(substitute(v_EU)), length(v_EU)), v_EU)
 colnames(dose) <- c("name","dose")
 
 #plot exposure dose
-data <- c(unname(quantile(conso1_EU_val, c(0.5))), unname(quantile(conso1_EU_val, c(0.75))), unname(quantile(conso1_EU_val, c(0.8))), unname(quantile(conso1_EU_val, c(0.95))))
-percentile <- c("50 Percentile", "75 Percentile", "80 Percentile", "95 Percentile")
+data <- c(unname(quantile(conso1_EU_val, c(0.5))), unname(quantile(conso1_EU_val, c(0.75))), unname(quantile(conso1_EU_val, c(0.9))), unname(quantile(conso1_EU_val, c(0.95))))
+percentile <- c("50 Percentile", "75 Percentile", "90 Percentile", "95 Percentile")
 df1 <- data.frame(data, percentile)
 
 Ex <- ggplot(dose, aes(x=dose, fill=name))+
@@ -98,6 +99,7 @@ bee.pop <- function(t, state, parms) {
        })
 }
 
+
 # set parameters
 parms <- function(x){
   c(c0=0.1, l0=2000, amin=0.25, amax=0.25, s=0.75,m0=0.1, 
@@ -113,8 +115,8 @@ times = seq(0, 1000, by = 1)
 # ode output
 out.5 <- dede(y = state, times = times, func = bee.pop, parms = parms(.5))
 out.75 <- dede(y = state, times = times, func = bee.pop, parms = parms(.75))
-out.8 <- dede(y = state, times = times, func = bee.pop, parms = parms(.8))
-out.975 <- dede(y = state, times = times, func = bee.pop, parms = parms(.95))
+out.9 <- dede(y = state, times = times, func = bee.pop, parms = parms(.9))
+out.95 <- dede(y = state, times = times, func = bee.pop, parms = parms(.95))
 
 ## Makes the data in a more ggplot-friendly format
 stacker <- function(df){
@@ -144,11 +146,11 @@ gg.dynamic.plot <- function(x,y){
 
 E50 <- gg.dynamic.plot(.50, 90000)+ggtitle("Exposure dose at 50 perentile") + ylab("Food Storagrs and Bee Population") + theme(legend.position="none")
 E75 <- gg.dynamic.plot(.75, 90000)+ggtitle("Exposure dose at 75 perentile") + theme(legend.position="none")
-E80 <- gg.dynamic.plot(.80, 90000)+ggtitle("Exposure dose at 80 perentile") + xlab("Time (day)") + ylab("Food Storagrs and Bee Population") + theme(legend.position="none")
+E90 <- gg.dynamic.plot(.90, 90000)+ggtitle("Exposure dose at 90 perentile") + xlab("Time (day)") + ylab("Food Storagrs and Bee Population") + theme(legend.position="none")
 E95 <- gg.dynamic.plot(.95, 20000)+ggtitle("Exposure dose at 95 perentile") + xlab("Time (day)") + theme(legend.position=c(.8, .7))
 
 x11(8, 11)
-grid.arrange(Ex, arrangeGrob(E50, E75,ncol=2),arrangeGrob(E80, E95,ncol=2), ncol=1)
+grid.arrange(Ex, arrangeGrob(E50, E75,ncol=2),arrangeGrob(E90, E95,ncol=2), ncol=1)
 
 # 1223 Risk
 EC50<-mcstoc(rnorm, type="VU", 5543.9879, 330.4317)
@@ -166,17 +168,38 @@ Emax<-mcstoc(rnorm, type="VU", 3.476e-01, 5.594e-02)
 EC50<-mcstoc(rnorm, type="VU", 3.941e+03, 7.193e+02)
 n <-mcstoc(rnorm, type="VU", 2.003, 5.594e-02)
 md <- Emax*Imidacloprid^n/(EC50^n+Imidacloprid^n)
-plot(md, xlab="Mortality_rate", ylab="Cumulative probability")
-mormodel <- mc(Emax, EC50, n, Imidacloprid, md)
+m_d <- 1/0.1- 1/(0.1+Emax*Imidacloprid^n/(EC50^n+Imidacloprid^n))
+plot(m_d, xlab="Decreasing lifespan", ylab="Cumulative probability")
+mormodel <- mc(Emax, EC50, n, Imidacloprid, m_d)
 tor<-tornado(mormodel)
 plot(tor)
 
-#
-probs <- c(0.025, 0.25, 0.50, 0.75, 0.975)
+# Exceedance risk
+library(reshape2)
+library(plyr)
+probs <- c(0.50, 0.75, 0.9, 0.95)
 quant1 <- as.data.frame(t(apply(Missing_Ratio[,,], 1, quantile, probs = probs)))
-ecdfs1 <- sapply(names(quant1), function(q) ecdf(quant1[[q]]))
-plot(ecdfs1[['75%']], main = '')
+quant2 <- as.data.frame(t(apply(m_d[,,], 1, quantile, probs = probs)))
+cols <- c('green', 'lightyellow3', 'orange', 'red')
+quant.melt1 <- suppressMessages(melt(quant1))
+quant.melt2 <- suppressMessages(melt(quant2))
+names(quant.melt1) <- c('quantile', 'x')
+names(quant.melt2) <- c('quantile', 'x')
+ecdf1 <- ddply(quant.melt1, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
+ecdf2 <- ddply(quant.melt2, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
+ecdf_1 <- ddply(ecdf1 , "quantile", mutate, 
+                ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
+ecdf_2 <- ddply(ecdf2 , "quantile", mutate, 
+                ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
+R1 <- ggplot(ecdf_1, aes(x,1-ecdf, colour = quantile)) + geom_step() +
+  xlab('Missing ratio (%)') + ylab('Exxceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
+  theme(legend.position=c(0.85,0.8)) +  labs(colour = "Exposue quantile") + scale_colour_manual(values = cols)
+R2 <- ggplot(ecdf_2, aes(x,1-ecdf, colour = quantile)) + geom_step() +
+  xlab('Decreasing lifespan (day)') + ylab('Exxceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
+  theme(legend.position="none") +  labs(colour = "Exposue quantile") + scale_colour_manual(values = cols)
 
+x11(8, 11)
+grid.arrange(R1, R2, ncol=1)
 
 
 # Find quantile
@@ -190,7 +213,7 @@ t <- 1:365
 
 #
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.5))
-mp <- quantile(as.numeric(Missing_Ratio), c(0.5))
+mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.5)))
 Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
 L <- Q %>% 
   mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
@@ -201,7 +224,7 @@ R50<- cbind(R50,Percentile)
 
 
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.6))
-mp <- quantile(as.numeric(Missing_Ratio), c(0.7))
+mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.6)))
 Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
 L <- Q %>% 
   mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
@@ -211,6 +234,7 @@ Percentile<- rep(0.6, 365)
 R60<- cbind(R60,Percentile)
 
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.7))
+mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.7)))
 Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
 L <- Q %>% 
   mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
@@ -220,7 +244,7 @@ Percentile<- rep(0.7, 365)
 R70<- cbind(R70,Percentile)
 
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.8))
-mp <- quantile(as.numeric(Missing_Ratio), c(0.8))
+mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.7)))
 Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
 L <- Q %>% 
   mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
@@ -230,7 +254,7 @@ Percentile<- rep(0.8, 365)
 R80<- cbind(R80,Percentile)
 
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.9))
-mp <- quantile(as.numeric(Missing_Ratio), c(0.9))
+mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.9)))
 Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
 L <- Q %>% 
   mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
