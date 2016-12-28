@@ -193,13 +193,12 @@ ecdf_2 <- ddply(ecdf2 , "quantile", mutate,
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
 R1 <- ggplot(ecdf_1, aes(x,1-ecdf, colour = quantile)) + geom_step() +
   xlab('Missing ratio (%)') + ylab('Exxceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
-  theme(legend.position=c(0.85,0.8)) +  labs(colour = "Exposue quantile") + scale_colour_manual(values = cols)
+  theme(legend.position=c(0.85,0.8)) +  labs(colour = "Exposue") + scale_colour_manual(values = cols)
 R2 <- ggplot(ecdf_2, aes(x,1-ecdf, colour = quantile)) + geom_step() +
   xlab('Decreasing lifespan (day)') + ylab('Exxceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
-  theme(legend.position="none") +  labs(colour = "Exposue quantile") + scale_colour_manual(values = cols)
+  theme(legend.position="none") + scale_colour_manual(values = cols)
 
-x11(8, 11)
-grid.arrange(R1, R2, ncol=1)
+
 
 
 # Find quantile
@@ -207,82 +206,69 @@ quantile(md, c(0.5, 0.6, 0.7, 0.8, 0.9, 0.95))
 
 # Parameters
 l0 <- 2000; v<-5000; amax<-0.25; amin<-0.25; s<-0.75; m0<-0.1; b<-500 
-ra <- 0.007; rb<-0.018; fi<-0.11
+ra <- 0.007; rb<-0.018; fi<-0.11; c0 <- 0.15
 
 t <- 1:365
 
 #
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.5))
-mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.5)))
-Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
-L <- Q %>% 
-  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
-R50 <- L %>%
-  mutate (r = m1*(q+v)/(l1*q))
+c1 <- c0*(0.448+0.090*sin(2*pi*(t-1)/365)-0.386*cos(2*pi*(t-1)/365))
+R50 <- data.frame(t=t, m1=m1, c1=c1)
+R50 <- R50 %>%
+  mutate (r = m1/(fi*ra/rb)/(c1/ra-1))
 Percentile<- rep(0.5, 365)
 R50<- cbind(R50,Percentile)
 
-
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.6))
-mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.6)))
-Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
-L <- Q %>% 
-  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
-R60 <- L %>%
-  mutate (r = m1*(q+v)/(l1*q))
-Percentile<- rep(0.6, 365)
+c1 <- c0*(0.448+0.090*sin(2*pi*(t-1)/365)-0.386*cos(2*pi*(t-1)/365))
+R60 <- data.frame(t=t, m1=m1, c1=c1)
+R60 <- R60 %>%
+  mutate (r = m1/(fi*ra/rb)/(c1/ra-1))
+          Percentile<- rep(0.6, 365)
 R60<- cbind(R60,Percentile)
 
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.7))
-mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.7)))
-Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
-L <- Q %>% 
-  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
-R70 <- L %>%
-  mutate (r = m1*(q+v)/(l1*q))
+c1 <- c0*(0.448+0.090*sin(2*pi*(t-1)/365)-0.386*cos(2*pi*(t-1)/365))
+R70 <- data.frame(t=t, m1=m1, c1=c1)
+R70 <- R70 %>%
+  mutate (r = m1/(fi*ra/rb)/(c1/ra-1))
 Percentile<- rep(0.7, 365)
 R70<- cbind(R70,Percentile)
 
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.8))
-mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.7)))
-Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
-L <- Q %>% 
-  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
-R80 <- L %>%
-  mutate (r = m1*(q+v)/(l1*q))
+c1 <- c0*(0.448+0.090*sin(2*pi*(t-1)/365)-0.386*cos(2*pi*(t-1)/365))
+R80 <- data.frame(t=t, m1=m1, c1=c1)
+R80 <- R80 %>%
+  mutate (r = m1/(fi*ra/rb)/(c1/ra-1))
 Percentile<- rep(0.8, 365)
 R80<- cbind(R80,Percentile)
 
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.9))
-mp <- 1-(quantile(as.numeric(Missing_Ratio), c(0.9)))
-Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
-L <- Q %>% 
-  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
-R90 <- L %>%
-  mutate (r = m1*(q+v)/(l1*q))
+c1 <- c0*(0.448+0.090*sin(2*pi*(t-1)/365)-0.386*cos(2*pi*(t-1)/365))
+R90 <- data.frame(t=t, m1=m1, c1=c1)
+R90 <- R90 %>%
+  mutate (r = m1/(fi*ra/rb)/(c1/ra-1))
 Percentile<- rep(0.9, 365)
 R90<- cbind(R90,Percentile)
 
 m1 <-(m0*(0.584-0.139*sin(2*pi*(t-1)/365)-0.248*cos(2*pi*(t-1)/365)))+quantile(as.numeric(md), c(0.95))
-mp <- quantile(as.numeric(Missing_Ratio), c(0.95))
-Q <- data.frame(t=t, m1=m1, q=(-(amin-s-m1)+((amin-s-m1)^2+4*amin*m1)^0.5)/(2*amin))
-L <- Q %>% 
-  mutate (l1=l0*(0.588+0.149*sin(2*pi*(t-1)/365)-0.422*cos(2*pi*(t-1)/365)))
-R95 <- L %>%
-  mutate (r = m1*(q+v)/(l1*q))
+c1 <- c0*(0.448+0.090*sin(2*pi*(t-1)/365)-0.386*cos(2*pi*(t-1)/365))
+R95 <- data.frame(t=t, m1=m1, c1=c1)
+R95 <- R95 %>%
+  mutate (r = m1/(fi*ra/rb)/(c1/ra-1))
 Percentile<- rep(0.95, 365)
 R95<- cbind(R95,Percentile)
 
 data1<-rbind(R95, R90, R80, R70, R60, R50)
 
 # Plot
-ggplot(data1, aes(x=t, y=r, color=Percentile))+
+R3 <- ggplot(data1, aes(x=t, y=r, color=Percentile)) +
   geom_line((aes(colour = Percentile)))+
   scale_y_log10(limits = c(0.05,100))+
-  theme(axis.title.x = element_text(size=16),
-        axis.text.x  = element_text(vjust=0.5, size=16),
-        axis.title.y = element_text(size=16),
-        axis.text.y  = element_text(vjust=0.5, size=16))+
   geom_hline(aes(yintercept = 1), linetype = "dashed", colour = "red")+
   theme(legend.position=c(0.8,0.8))+
-  ylab("Risk")+xlab("Time (day)")
+  theme(legend.position=c(0.9,0.2)) +  labs(colour = "Exposue")+
+  ylab("Population extinction risk")+xlab("Annual day")
+
+x11(8, 11)
+grid.arrange(grid.arrange(R1, R2, ncol=2), R3, ncol=1)
