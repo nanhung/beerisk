@@ -272,3 +272,42 @@ R3 <- ggplot(data1, aes(x=t, y=r, color=Percentile)) +
 
 x11(8, 11)
 grid.arrange(grid.arrange(R1, R2, ncol=2), R3, ncol=1)
+
+# Sensitivity
+library(sensitivity)
+library(randtoolbox)
+risk.fun <- function(X){
+  ra <- 0.007; rb<-0.018; fi<-0.11
+  c <- 0.1 * X[, 1]; m <- 0.1 * X[, 2]; md <- X[, 3]
+  (m+md)/(fi*ra/rb)/(c/ra-1)
+}
+
+x <- delsa(model=risk.fun,
+           par.ranges=list(c=c(0.1, 1),m=c(0.29, 1), md=c(0,0.347)),
+           samples=1000,method="sobol")
+
+# Summary of sensitivity indices of each parameter across parameter space
+print(x)
+library(ggplot2)
+library(reshape2)
+library(tidyr) # long_par
+x11(8, 11)
+plot(x)
+
+# Parameter value vs. Output---
+par <- data.frame(x$X0)
+colnames(par) <- c("c", "m", "md")
+long_par <- par %>% gather(par, val, c:md)
+out <- x$y[1:3000]
+df <- cbind(long_par, out)
+df$par_f <- factor(df$par, levels=c("c", "m", "md"))
+
+# Plot
+x11(8, 11)
+ggplot(df,aes(val, out))+
+  geom_point(size = 2, col = "#800000")+
+  xlab("Parameter value")+
+  ylab("Population extinction risk")+
+  ggtitle("")+
+  facet_grid(. ~ par_f, scale = "free")
+## End(Not run)
