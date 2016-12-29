@@ -55,10 +55,8 @@ Ex <- ggplot(dose, aes(x=dose, fill=name))+
   geom_histogram(aes(y=..density..), alpha=0.8, colour="darkgrey", fill="grey", 
                  position="identity", bins = 50)+
   scale_x_log10(breaks=c(1,10,100,1000,10000), limits = c(0.01, 100000))+
-  theme(axis.title.x = element_text(size=16),
-        axis.text.x  = element_text(vjust=0.5, size=16),
-        axis.title.y = element_text(size=16),
-        axis.text.y  = element_text(vjust=0.5, size=16))+
+  theme(legend.title=element_blank()) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
   ylab("Probability")+xlab(bquote('Dose ('*mu*g~L^-1*')'))+theme(legend.position = "none")+
   geom_density(fill="white", alpha = 0.05)+
   ggtitle("Simulated exposure dose")+
@@ -139,7 +137,7 @@ gg.dynamic.plot <- function(x,y){
                     color=compartments)) + 
     geom_line(aes(colour = compartments), size=1.5) + 
     xlab(" ") + ylab(" ") +
-     theme(legend.title=element_blank()) +
+    theme(legend.title=element_blank()) +
     theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
     scale_y_continuous(lim=c(0, y))
 }
@@ -191,14 +189,14 @@ ecdf_1 <- ddply(ecdf1 , "quantile", mutate,
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
 ecdf_2 <- ddply(ecdf2 , "quantile", mutate, 
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
-R1 <- ggplot(ecdf_1, aes(x,1-ecdf, colour = quantile)) + geom_step() +
+R1 <- ggplot(ecdf_1, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
   xlab('Missing ratio (%)') + ylab('Exxceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
   theme(legend.position=c(0.85,0.8)) +  labs(colour = "Exposue") + scale_colour_manual(values = cols)
-R2 <- ggplot(ecdf_2, aes(x,1-ecdf, colour = quantile)) + geom_step() +
+R2 <- ggplot(ecdf_2, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) +
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
   xlab('Decreasing lifespan (day)') + ylab('Exxceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
   theme(legend.position="none") + scale_colour_manual(values = cols)
-
-
 
 
 # Find quantile
@@ -263,12 +261,13 @@ data1<-rbind(R95, R90, R80, R70, R60, R50)
 
 # Plot
 R3 <- ggplot(data1, aes(x=t, y=r, color=Percentile)) +
-  geom_line((aes(colour = Percentile)))+
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  geom_line()+
   scale_y_log10(limits = c(0.05,100))+
   geom_hline(aes(yintercept = 1), linetype = "dashed", colour = "red")+
-  theme(legend.position=c(0.8,0.8))+
-  theme(legend.position=c(0.9,0.2)) +  labs(colour = "Exposue")+
-  ylab("Population extinction risk")+xlab("Annual day")
+  theme(legend.position=c(0.9,0.2)) + labs(colour = "Exposue")+
+  ylab("Population extinction risk")+xlab("Annual day")+
+  scale_color_gradient(low="blue", high="red")
 
 x11(8, 11)
 grid.arrange(grid.arrange(R1, R2, ncol=2), R3, ncol=1)
@@ -283,8 +282,8 @@ risk.fun <- function(X){
 }
 
 x <- delsa(model=risk.fun,
-           par.ranges=list(c=c(0.1, 1),m=c(0.29, 1), md=c(0,0.347)),
-           samples=1000,method="sobol")
+           par.ranges=list(c=c(0.1, 1),m=c(0.29, 1), md=c(0.01,0.347)),
+           samples=c(10,10,10),method="grid")
 
 # Summary of sensitivity indices of each parameter across parameter space
 print(x)
@@ -297,17 +296,34 @@ plot(x)
 # Parameter value vs. Output---
 par <- data.frame(x$X0)
 colnames(par) <- c("c", "m", "md")
-long_par <- par %>% gather(par, val, c:md)
+long_par <- par %>% gather(par, val)
 out <- x$y[1:3000]
 df <- cbind(long_par, out)
 df$par_f <- factor(df$par, levels=c("c", "m", "md"))
 
+#
+delsafirst <- data.frame(x$delsafirst)
+colnames(delsafirst) <- c("c", "m", "md")
+long_df <- delsafirst %>% gather(delsafirst, Sensitivity)
+df <- cbind(df, long_df)
+
 # Plot
-x11(8, 11)
-ggplot(df,aes(val, out))+
-  geom_point(size = 2, col = "#800000")+
+S1 <- ggplot(df,aes(val, out, color=Sensitivity))+
+  geom_point(size = 2)+
   xlab("Parameter value")+
   ylab("Population extinction risk")+
   ggtitle("")+
-  facet_grid(. ~ par_f, scale = "free")
-## End(Not run)
+  facet_grid(. ~ par_f, scale = "free")+theme(legend.position="top")+
+  scale_y_log10(limits = c(0.05,100))+
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  geom_hline(aes(yintercept = 1), linetype = "dashed", colour = "red")+
+  scale_color_gradient(low="pink", high="red")
+S2 <- ggplot(long_df, aes(delsafirst, Sensitivity))+ geom_boxplot()+
+  theme(legend.position="none")+
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  xlab("Parameter")+
+  ylab("DELSA first-order sensitivity")
+
+x11(8, 11)
+grid.arrange(S1, S2, ncol=1)
+
