@@ -203,7 +203,7 @@ R2 <- ggplot(ecdf_2, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) +
 quantile(md, c(0.5, 0.6, 0.7, 0.8, 0.9, 0.95))
 
 # Parameters
-l0 <- 2000; v<-5000; amax<-0.25; amin<-0.25; s<-0.75; m0<-0.1; b<-500 
+l0 <- 2000; v<-5000; amax<-0.25; amin<-0.25; s<-0.75; m0<-0.14; b<-500 
 ra <- 0.007; rb<-0.018; fi<-0.11; c0 <- 0.15
 
 t <- 1:365
@@ -277,7 +277,7 @@ library(sensitivity)
 library(randtoolbox)
 risk.fun <- function(X){
   ra <- 0.007; rb<-0.018; fi<-0.11
-  c <- 0.1 * X[, 1]; m <- 0.1 * X[, 2]; md <- X[, 3]
+  c <- 0.1 * X[, 1]; m <- 0.14 * X[, 2]; md <- X[, 3]
   (m+md)/(fi*ra/rb)/(c/ra-1)
 }
 
