@@ -2,26 +2,48 @@
 require(ggplot2)
 require(gridExtra)
 require(investr)
+library(data.table) # rbindlist
 
-## Creat dataframe
-#dose<- c(0.1,1,2,3,4,5,6,7,8,9,10)
-#acute_mortality_rate <- c(0.01474,0.11612,0.18873,0.23891,0.27584,0.30422,0.32675,0.34508,0.36031,0.37315,0.38414)
-#Data1 <- data.frame(dose,acute_mortality_rate)
-#Data1 (dose, missing_porb)
-x <- c(0, 600, 1600, 3000, 4000, 6000)
-y <- c(0, 0, 0, 22.6, 36.4, 51.6)
-Data1 <- data.frame(x, y)
-Data1
-mod1 <- nls(y ~ 100*x^b/(a^b+x^b), data = Data1, start=list(a=5540,b=2.2))
-summary(mod1)
-RSS.p<-sum(residuals(mod1)^2)
-TSS<-sum((y-mean(y))^2)
-r.squared<-1-(RSS.p/TSS)
-r.squared
+# 1230
+x<-c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+y0 <- c(100, 100, 100, 100, 100, 100, 100, 100, 97, 94, 90)
+y025 <- c(100, 97, 97, 94, 94, 94, 94, 88, 88, 88, 88)
+y05 <- c(100, 94, 94, 90, 90, 90, 90, 90, 86, 86, 80)
+y1 <- c(100, 97, 94, 88, 80, 78, 78, 70, 70, 68, 68)
+y2 <- c(100, 90, 78, 70, 70, 70, 70, 62, 52, 42, 40)
+x4 <- c(0, 1, 2, 3, 4, 5, 6, 7, 8)
+y4 <- c(100, 92, 72, 60, 50, 40, 30, 30, 18)
 
-# test 95% CI
-plotFit(mod1,interval="prediction",ylim=c(0,60),pch=19,col.pred='light grey',shade=T,
-        xlab=expression('Dose ('*mu*g~L^-1*')'), ylab= "Missing ratio (%)")
+df0 <- cbind(x, y0, 0); df025 <- cbind(x, y025, 250); df05 <- cbind(x, y05, 500);
+df1 <- cbind(x, y1, 1000); df2 <- cbind(x, y2, 2000); df4 <- cbind(x4, y4, 4000);
+df0<-as.data.frame(df0);df025<-as.data.frame(df025);df05<-as.data.frame(df05)
+df1<-as.data.frame(df1);df2<-as.data.frame(df2);df4<-as.data.frame(df4)
+colnames(df0)<-colnames(df025)<-colnames(df05)<-colnames(df1)<-colnames(df2)<-colnames(df4)<-c("day", "sur", "dos")
+Dat1.list <- list(df0,df025,df05,df1,df2,df4)
+Dat1 <- rbindlist(Dat1.list)
+
+exp.model0 <- lm(log(y0)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model025 <- lm(log(y025)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model05 <- lm(log(y05)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model1 <- lm(log(y1)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model2 <- lm(log(y2)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model4 <- lm(log(y4)~ 0+x4, offset=rep(4.60517, length(x4)))
+
+c <- ggplot(Dat1, aes(day, log(sur), color=factor(dos)))
+c + geom_abline(intercept = 4.60517, slope = -0.004816) + geom_point()
+
+
+
+
+x<-c(0, 250, 500, 1000, 2000, 4000)
+y<-c(0.00787, 0.01321, 0.0158, 0.04288, 0.08263, 0.6172)
+adj.y<- y-0.00787
+
+
+
+
+
+
 
 #
 x <- c(0, 100,1000,1500,3000,3500,6000)
@@ -59,3 +81,38 @@ p3 <- ggplot(Data3, aes(y=rate_ratio, x=day)) + facet_grid(. ~ parameter) + stat
 ##Use grid.arrange(), from the gridExtra package
 x11(8,11)
 grid.arrange(p1,p2,p3, ncol=1)
+
+
+
+## Creat dataframe
+#dose<- c(0.1,1,2,3,4,5,6,7,8,9,10)
+#acute_mortality_rate <- c(0.01474,0.11612,0.18873,0.23891,0.27584,0.30422,0.32675,0.34508,0.36031,0.37315,0.38414)
+#Data1 <- data.frame(dose,acute_mortality_rate)
+#Data1 (dose, missing_porb)
+x <- c(0, 600, 1600, 3000, 4000, 6000)
+y <- c(0, 0, 0, 22.6, 36.4, 51.6)
+Data1 <- data.frame(x, y)
+Data1
+mod1 <- nls(y ~ 100*x^b/(a^b+x^b), data = Data1, start=list(a=5540,b=2.2))
+summary(mod1)
+RSS.p<-sum(residuals(mod1)^2)
+TSS<-sum((y-mean(y))^2)
+r.squared<-1-(RSS.p/TSS)
+r.squared
+
+# test 95% CI
+plotFit(mod1,interval="prediction",ylim=c(0,60),pch=19,col.pred='light grey',shade=T,
+        xlab=expression('Dose ('*mu*g~L^-1*')'), ylab= "Missing ratio (%)")
+
+#1230 missing
+# Dose = 1600
+x<-c(0, 1, 2, 3, 4, 5)
+y1<-c(1000,774,599,464,359,278)
+y2<-c(1000,636,404,257,163,103)
+y3<-c(1000,484,234,113,54,26)
+exp.model1 <- lm(log(y1)~ x)
+exp.model2 <- lm(log(y2)~ x)
+exp.model3 <- lm(log(y3)~ x)
+
+x<-c(0, 600, 1600, 3000, 4000, 6000)
+y<-c(0, 0, 0, 0.256, 0.454, 0.730)
