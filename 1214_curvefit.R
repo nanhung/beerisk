@@ -41,10 +41,11 @@ p1 <-ggplot(Dat1, aes(day, sur))+ geom_point(aes(color = factor(dos)))+ scale_y_
   stat_function(fun=function(x)100*exp(-0.043743*x), geom="line", color="gray10") +
   stat_function(fun=function(x)100*exp(-0.084599*x), geom="line", color="gray10") +
   stat_function(fun=function(x)100*exp(-0.191161*x), geom="line", color="gray10")+ 
-  ylab("Survival (%)")+xlab(bquote('Day'))+
+  ylab("%Survival")+xlab(bquote('Day'))+
   theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
   labs(color="Dose")+theme_bw()
 
+#
 P_y0 <- exp(predict(lm(log(y0)~ 0+x, offset=rep(4.60517, length(x)))))
 P_y025 <- exp(predict(lm(log(y025)~ 0+x, offset=rep(4.60517, length(x)))))
 P_y05 <- exp(predict(lm(log(y05)~ 0+x, offset=rep(4.60517, length(x)))))
@@ -64,7 +65,24 @@ P2_df[, 1] <- factor(P2_df[, 1], levels = c("0","250","500","1000","2000","4000"
 p2<- ggplot(P2_df, aes(Predicted, Observed)) + geom_point(aes(color = Dose))+theme_bw()+
   scale_x_continuous(lim=c(0, 100))+scale_y_continuous(lim=c(0, 100)) + 
   geom_abline(intercept = 0, cex = 1) +
-  theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))
+  theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  xlab("Predicted %survial")+ylab('Observed %survial')
+
+
+#
+h_lif <- c(log(2)/(-(coef(summary(exp.model4))[, 1])),
+           log(2)/(-(coef(summary(exp.model2))[, 1])),
+           log(2)/(-(coef(summary(exp.model1))[, 1])),
+           log(2)/(-(coef(summary(exp.model05))[, 1])))
+h_dos <- c(4000,2000,1000,500)
+h_df <- data.frame(h_lif,h_dos)
+p3 <- ggplot(h_df, aes(h_lif, h_dos)) + geom_point() + scale_y_continuous(lim=c(0, 4000))+
+  ylab(bquote('ED50 ('*mu*g~L^-1*')'))+xlab(bquote('Day'))+ 
+  stat_function(fun=function(x)4457.9-1164*log(x), geom="line", color="gray10", cex = 1)+
+  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  labs(color="Dose")+theme_bw()
+
+
 
 mor.x<-c(0, 250, 500, 1000, 2000, 4000)
 mor.y<-c(0.004816, 0.014419, 0.019719, 0.043743, 0.084599, 0.191161)
@@ -80,7 +98,7 @@ mod3 <- lm(mor.y~ mor.x)
 summary(mod3)
 
 ## plot base + points
-p3 <- ggplot(Dat3, aes(mor.x, mor.y)) + geom_point() + stat_smooth(method=lm, formula = y~x, color="gray10")+
+p4 <- ggplot(Dat3, aes(mor.x, mor.y)) + geom_point() + stat_smooth(method=lm, formula = y~x, color="gray10")+
   ylab("Mortality rate (per day)")+xlab(bquote('Dose ('*mu*g~L^-1*')'))+
   theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
   geom_errorbar(aes(x = mor.x, ymin = mor.y-mor.y.sd, ymax =  mor.y+mor.y.sd, width = .5))+
@@ -88,7 +106,7 @@ p3 <- ggplot(Dat3, aes(mor.x, mor.y)) + geom_point() + stat_smooth(method=lm, fo
 
 ##Use grid.arrange(), from the gridExtra package
 x11(8.5,11)
-grid.arrange(p1, arrangeGrob(p2, p3,ncol=2), ncol=1)
+grid.arrange(p1, p2, arrangeGrob(p3, p4,ncol=2), ncol=1)
 
 
 

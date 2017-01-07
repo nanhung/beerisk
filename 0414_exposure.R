@@ -60,7 +60,59 @@ Ex <- ggplot(dose, aes(x=dose, fill=name))+
   ylab("Probability")+xlab(bquote('Dose ('*mu*g~L^-1*')'))+theme(legend.position = "none")+
   geom_density(fill="white", alpha = 0.05)+
   ggtitle("Simulated exposure dose")+
-  geom_vline(df1, mapping=aes(xintercept=data), color="red") 
+  theme_bw()+
+  geom_vline(df1, mapping=aes(xintercept=data), color= c("green","lightyellow3","orange","red")) 
+
+# 0107 Risk
+slp <- mcstoc(rnorm, type="VU", 4.672e-05, 1.804e-06)
+int <- mcstoc(rnorm, type="VU", -6.049e-04, 3.400e-03)
+Imi <- mcstoc(rlnorm, type="VU", meanlog= Mean_conso_EU, sdlog= Sd_conso_EU,
+              rtrunc=TRUE, linf=0, lsup=10000)
+md <- slp*Imi
+
+# T = 10 day
+Mor_1 <- (1-exp(-md*10)/1)*100
+plot(Mor_1, xlab="%Mortality", ylab="Cumulative probability")
+mormodel <- mc(slp, md, Imi, Mor_1)
+tor<-tornado(mormodel)
+plot(tor)
+
+# T = 30 day
+Mor_2 <- (1-exp(-md*30)/1)*100
+plot(Sur_2, xlab="%Mortality", ylab="Cumulative probability")
+mormodel <- mc(slp, md, Imi, Mor_2)
+tor<-tornado(mormodel)
+plot(tor)
+
+# Exceedance risk
+library(reshape2)
+library(plyr)
+probs <- c(0.5, 0.75, 0.9, 0.95)
+quant1 <- as.data.frame(t(apply(Mor_1[,,], 1, quantile, probs = probs)))
+quant2 <- as.data.frame(t(apply(Mor_2[,,], 1, quantile, probs = probs)))
+cols <- c('green', 'lightyellow3', 'orange', 'red')
+quant.melt1 <- suppressMessages(melt(quant1))
+quant.melt2 <- suppressMessages(melt(quant2))
+names(quant.melt1) <- c('quantile', 'x')
+names(quant.melt2) <- c('quantile', 'x')
+ecdf1 <- ddply(quant.melt1, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
+ecdf2 <- ddply(quant.melt2, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
+ecdf_1 <- ddply(ecdf1 , "quantile", mutate, 
+                ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
+ecdf_2 <- ddply(ecdf2 , "quantile", mutate, 
+                ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
+R1 <- ggplot(ecdf_1, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) + theme_bw() +
+  theme(legend.position = c(0.8,0.8), axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
+  labs(colour = "Exposue")+scale_colour_manual(values = cols)+scale_x_continuous(lim=c(0, 100))
+R2 <- ggplot(ecdf_2, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) + theme_bw() +
+  theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  xlab('30-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
+  scale_colour_manual(values = cols)
+
+#
+x11(8, 11)
+grid.arrange(Ex, arrangeGrob(R1, R2,ncol=2), ncol=1)
 
 # 161220
 bee.pop <- function(t, state, parms) {
@@ -150,53 +202,10 @@ E95 <- gg.dynamic.plot(.95, 20000)+ggtitle("Exposure dose at 95 perentile") + xl
 x11(8, 11)
 grid.arrange(Ex, arrangeGrob(E50, E75,ncol=2),arrangeGrob(E90, E95,ncol=2), ncol=1)
 
-# 1223 Risk
-EC50<-mcstoc(rnorm, type="VU", 5543.9879, 330.4317)
-n <-mcstoc(rnorm, type="VU", 2.1720, 0.3314)
-Imidacloprid <- mcstoc(rlnorm, type="VU", meanlog= Mean_conso_EU, sdlog= Sd_conso_EU, 
-                    rtrunc=TRUE, linf=0, lsup=10000)
-Missing_Ratio <- 100*Imidacloprid ^n/(EC50^n+Imidacloprid ^n)
-plot(Missing_Ratio, xlab="Missing ratio", ylab="Cumulative probability")
-missmodel <- mc(EC50, n, Imidacloprid, Missing_Ratio)
-tor<-tornado(missmodel)
-plot(tor)
 
-#
-Emax<-mcstoc(rnorm, type="VU", 3.476e-01, 5.594e-02)
-EC50<-mcstoc(rnorm, type="VU", 3.941e+03, 7.193e+02)
-n <-mcstoc(rnorm, type="VU", 2.003, 5.594e-02)
-md <- Emax*Imidacloprid^n/(EC50^n+Imidacloprid^n)
-m_d <- 1/0.1- 1/(0.1+Emax*Imidacloprid^n/(EC50^n+Imidacloprid^n))
-plot(m_d, xlab="Decreasing lifespan", ylab="Cumulative probability")
-mormodel <- mc(Emax, EC50, n, Imidacloprid, m_d)
-tor<-tornado(mormodel)
-plot(tor)
 
-# Exceedance risk
-library(reshape2)
-library(plyr)
-probs <- c(0.50, 0.75, 0.9, 0.95)
-quant1 <- as.data.frame(t(apply(Missing_Ratio[,,], 1, quantile, probs = probs)))
-quant2 <- as.data.frame(t(apply(m_d[,,], 1, quantile, probs = probs)))
-cols <- c('green', 'lightyellow3', 'orange', 'red')
-quant.melt1 <- suppressMessages(melt(quant1))
-quant.melt2 <- suppressMessages(melt(quant2))
-names(quant.melt1) <- c('quantile', 'x')
-names(quant.melt2) <- c('quantile', 'x')
-ecdf1 <- ddply(quant.melt1, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
-ecdf2 <- ddply(quant.melt2, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
-ecdf_1 <- ddply(ecdf1 , "quantile", mutate, 
-                ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
-ecdf_2 <- ddply(ecdf2 , "quantile", mutate, 
-                ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
-R1 <- ggplot(ecdf_1, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) +
-  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
-  xlab('Missing ratio (%)') + ylab('Exxceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
-  theme(legend.position=c(0.85,0.8)) +  labs(colour = "Exposue") + scale_colour_manual(values = cols)
-R2 <- ggplot(ecdf_2, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) +
-  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
-  xlab('Decreasing lifespan (day)') + ylab('Exxceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
-  theme(legend.position="none") + scale_colour_manual(values = cols)
+
+
 
 
 # Find quantile
