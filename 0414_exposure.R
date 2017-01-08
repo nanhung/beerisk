@@ -106,33 +106,57 @@ for (i in 2:1001){
 # Exceedance risk
 library(reshape2)
 library(plyr)
-#probs <- c(0.5, 0.75, 0.9, 0.95)
-#quant1 <- as.data.frame(t(apply(Mor_1[,,], 1, quantile, probs = probs)))
-#quant2 <- as.data.frame(t(apply(Mor_2[,,], 1, quantile, probs = probs)))
-#cols <- c('green', 'lightyellow3', 'orange', 'red')
-quant.melt1 <- suppressMessages(melt(Mor_1[,,]))
-quant.melt2 <- suppressMessages(melt(Mor_2[,,]))
-quant.melt1$Var1<-NULL
-quant.melt2$Var1<-NULL
-names(quant.melt1) <- c('quantile', 'x')
-names(quant.melt2) <- c('quantile', 'x')
-ecdf1 <- ddply(quant.melt1, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
-ecdf2 <- ddply(quant.melt2, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
-ecdf_1 <- ddply(ecdf1 , "quantile", mutate, 
+melt1 <- suppressMessages(melt(Mor_1[,,]))
+melt2 <- suppressMessages(melt(Mor_2[,,]))
+melt1$Var1<-NULL
+melt2$Var1<-NULL
+names(melt1) <- c('v', 'x')
+names(melt2) <- c('v', 'x')
+ecdf1 <- ddply(melt1, c("v"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
+ecdf2 <- ddply(melt2, c("v"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
+ecdf_1 <- ddply(ecdf1 , "v", mutate, 
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
-ecdf_2 <- ddply(ecdf2 , "quantile", mutate, 
+ecdf_2 <- ddply(ecdf2 , "v", mutate, 
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
-R1 <- ggplot(ecdf_1, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) + theme_bw() +
+R1 <- ggplot(ecdf_1, aes(x,1-ecdf, color = v)) + geom_point() + theme_bw() +
   theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
   xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
-  scale_x_continuous(lim=c(0, 100))
-R2 <- ggplot(ecdf_2, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) + theme_bw() +
+  scale_x_continuous(lim=c(0, 100))+
+  geom_hline(yintercept = c(0.5,0.25,0.1,0.05), color= c("green","lightyellow3","orange","red")) 
+R2 <- ggplot(ecdf_2, aes(x,1-ecdf, color = v)) + geom_point() + theme_bw() +
   theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
   xlab('30-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
-  scale_x_continuous(lim=c(0, 100))
+  scale_x_continuous(lim=c(0, 100))+
+  geom_hline(yintercept = c(0.5,0.25,0.1,0.05), color= c("green","lightyellow3","orange","red")) 
+
+
+#
+probs <- c(0.5, 0.75, 0.9, 0.95)
+quant1 <- as.data.frame(t(apply(Mor_1[,,], 2, quantile, probs = probs)))
+quant2 <- as.data.frame(t(apply(Mor_2[,,], 2, quantile, probs = probs)))
+cols <- c('green', 'lightyellow3', 'orange', 'red')
+quant.melt1 <- suppressMessages(melt(quant1))
+quant.melt2 <- suppressMessages(melt(quant2))
+names(quant.melt1) <- c('quantile', 'x')
+names(quant.melt2) <- c('quantile', 'x')
+ecdf2.1 <- ddply(quant.melt1, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
+ecdf2.2 <- ddply(quant.melt2, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
+ecdf_2.1 <- ddply(ecdf2.1 , "quantile", mutate, 
+                ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
+ecdf_2.2 <- ddply(ecdf2.2 , "quantile", mutate, 
+                ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
+R3 <- ggplot(ecdf_2.1, aes(x,ecdf, color = quantile)) + geom_step(size=1) + theme_bw() +
+  theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  xlab('10-day %mortality') + ylab('Cumulative probability') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
+  scale_x_continuous(lim=c(0, 100)) + labs(colour = "Exposue quantile") + scale_colour_manual(values = cols)
+R4 <- ggplot(ecdf_2.2, aes(x,ecdf, color = quantile)) + geom_step(size=1) + theme_bw() +
+  theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  xlab('30-day %mortality') + ylab('Cumulative probability') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
+  scale_x_continuous(lim=c(0, 100)) + labs(colour = "Exposue quantile") + scale_colour_manual(values = cols)
+
 #
 x11(8, 11)
-grid.arrange(Ex, arrangeGrob(R1, R2,ncol=2), ncol=1)
+grid.arrange(Ex, arrangeGrob(R1, R2,ncol=2), arrangeGrob(R3, R4,ncol=2), ncol=1)
 
 # 161220
 bee.pop <- function(t, state, parms) {
