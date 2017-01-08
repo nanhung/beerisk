@@ -79,20 +79,41 @@ plot(tor)
 
 # T = 30 day
 Mor_2 <- (1-exp(-md*30)/1)*100
-plot(Sur_2, xlab="%Mortality", ylab="Cumulative probability")
+plot(Mor_2, xlab="%Mortality", ylab="Cumulative probability")
 mormodel <- mc(slp, md, Imi, Mor_2)
 tor<-tornado(mormodel)
 plot(tor)
 
+
+pre.ecdf <- ecdf(Mor_1[,1,])
+curve(1-pre.ecdf(x), col="red", xlim=c(0,100), ylim=c(0,1),
+      xlab="10-day% mortality", ylab = "Exceedence risk")
+
+for (i in 2:1001){
+  post.ecdf <- ecdf(Mor_1[,i,])
+  curve(1-post.ecdf(x), col="blue", add=TRUE)
+}
+
+pre.ecdf <- ecdf(Mor_2[,1,])
+curve(1-pre.ecdf(x), col="red", xlim=c(0,100), ylim=c(0,1),
+      xlab="30-day% mortality", ylab = "Exceedence risk")
+
+for (i in 2:1001){
+  post.ecdf <- ecdf(Mor_2[,i,])
+  curve(1-post.ecdf(x), col="darkblue", add=TRUE)
+}
+
 # Exceedance risk
 library(reshape2)
 library(plyr)
-probs <- c(0.5, 0.75, 0.9, 0.95)
-quant1 <- as.data.frame(t(apply(Mor_1[,,], 1, quantile, probs = probs)))
-quant2 <- as.data.frame(t(apply(Mor_2[,,], 1, quantile, probs = probs)))
-cols <- c('green', 'lightyellow3', 'orange', 'red')
-quant.melt1 <- suppressMessages(melt(quant1))
-quant.melt2 <- suppressMessages(melt(quant2))
+#probs <- c(0.5, 0.75, 0.9, 0.95)
+#quant1 <- as.data.frame(t(apply(Mor_1[,,], 1, quantile, probs = probs)))
+#quant2 <- as.data.frame(t(apply(Mor_2[,,], 1, quantile, probs = probs)))
+#cols <- c('green', 'lightyellow3', 'orange', 'red')
+quant.melt1 <- suppressMessages(melt(Mor_1[,,]))
+quant.melt2 <- suppressMessages(melt(Mor_2[,,]))
+quant.melt1$Var1<-NULL
+quant.melt2$Var1<-NULL
 names(quant.melt1) <- c('quantile', 'x')
 names(quant.melt2) <- c('quantile', 'x')
 ecdf1 <- ddply(quant.melt1, c("quantile"), mutate, ecdf = ecdf(x)(unique(x))*length(x))
@@ -102,14 +123,13 @@ ecdf_1 <- ddply(ecdf1 , "quantile", mutate,
 ecdf_2 <- ddply(ecdf2 , "quantile", mutate, 
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
 R1 <- ggplot(ecdf_1, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) + theme_bw() +
-  theme(legend.position = c(0.8,0.8), axis.text=element_text(size=12), axis.title=element_text(size=12))+
-  xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
-  labs(colour = "Exposue")+scale_colour_manual(values = cols)+scale_x_continuous(lim=c(0, 100))
+  theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
+  scale_x_continuous(lim=c(0, 100))
 R2 <- ggplot(ecdf_2, aes(x,1-ecdf, color = quantile)) + geom_step(size=1) + theme_bw() +
   theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
-  xlab('30-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black') +
-  scale_colour_manual(values = cols)
-
+  xlab('30-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
+  scale_x_continuous(lim=c(0, 100))
 #
 x11(8, 11)
 grid.arrange(Ex, arrangeGrob(R1, R2,ncol=2), ncol=1)
