@@ -20,8 +20,7 @@ author:
     aff: Department of Chemistry, Unknown University, Unknown Town
     alsoaff: Department of Chemistry, Second University, Nearby Town
 title:
-  formatted: A demonstration of the \textsf{achemso} \LaTeX\
-   class\footnote{A footnote for the title}
+  formatted: Assessing the neonicotinoid insecticide (imidacloprid) exposure-associated population  decreasing risk for honeybees
   short: An \textsf{achemso} demo
 abbr: IR,NMR,UV
 keywords: American Chemical Society, \LaTeX
