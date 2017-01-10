@@ -2,8 +2,8 @@
 journal: jacsat
 type: article
 author:
-  - name: Andrew N. Other
-    altaff: A shared footnote
+  - name: Nan-Hung Hsieh
+    aff: Department of Veterinary Integrative Biosciences
   - name: Fred T. Secondauthor
     altaff: "Current address: Some other place, Germany"
   - name: I. Ken Groupleader
