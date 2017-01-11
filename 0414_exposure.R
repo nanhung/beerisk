@@ -3,18 +3,31 @@ if(!require(fitdistrplus)) {
   require(fitdistrplus)
 } 
 
+require(fitdistrplus)
 require(gridExtra)
 require(dplyr)
 library(ggplot2)
 library(mc2d)
 library(EnvStats)
 require(deSolve)
+library(TeachingDemos)
+
 
 dat <- read.table("exposure.dat", head = T)
 EU_non0 <- subset(dat, adj>0.1)
+#descdist(EU_non0$adj, boot=1000, obs.col="maroon", boot.col="black")
 fitln_EU <- fitdist(EU_non0$adj,"lnorm",method="mle")
 boot.conc <- bootdist(fitln_EU, niter = 1001)
 summary(boot.conc)
+
+x11(20,20)
+CIcdfplot(boot.conc, CI.output = "quantile", xlab="Imidacloprid exposure dose", ylab="Cumulative density function", 
+          main = "Emprical and theoretical cumulative distribution of environmental imidacloprid exposure")
+subplot(plot(boot.conc, enhance=FALSE, col="maroon"),x=grconvertX(c(0.3,1), from='npc'),
+        y=grconvertY(c(0,0.7), from='npc'),
+        type='fig')
+
+plot(boot.conc, enhance=TRUE)
 
 ## fitdistrplus
 meanlog_EU <- fitln_EU$est[1]
@@ -356,6 +369,10 @@ R5 <- ggplot(data1, aes(x=t, y=r, color=Percentile)) +
 x11(7, 11)
 grid.arrange(sea, arrangeGrob(E50, E75, ncol=2), arrangeGrob(E90, E95, ncol=2), R5, ncol=1)
 
+#0111 for poster
+R6<-R5+theme(legend.position = c(0.6,0.7))
+x11(14, 7)
+grid.arrange(sea, arrangeGrob(E50, E75, ncol=2), R6, arrangeGrob(E90, E95, ncol=2),ncol=2)
 
 # Sensitivity
 library(sensitivity)
@@ -411,4 +428,7 @@ S2 <- ggplot(long_df, aes(delsafirst, Sensitivity))+ geom_boxplot()+ theme_bw() 
 
 x11(8, 11)
 grid.arrange(S1, S2, ncol=1)
+
+x11(20, 7)
+grid.arrange(S1, S2, ncol=2)
 
