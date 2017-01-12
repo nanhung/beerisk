@@ -11,6 +11,8 @@ library(mc2d)
 library(EnvStats)
 require(deSolve)
 library(TeachingDemos)
+library(MASS) #ke2d
+library(RColorBrewer) # Color housekeeping
 
 
 ## fitdistrplus
@@ -21,23 +23,11 @@ fitln_EU <- fitdist(EU_non0$adj,"lnorm",method="mle")
 Boot_EU <- bootdist(fitln_EU, bootmethod="param", niter=1001)
 summary(Boot_EU)
 
-x11(20,20)
-CIcdfplot(Boot_EU, CI.output = "quantile", xlab="Imidacloprid exposure dose", ylab="Cumulative density function", 
-          main = "Emprical and theoretical cumulative distribution of environmental imidacloprid exposure")
-subplot(plot(Boot_EU, enhance=FALSE, col="maroon"),x=grconvertX(c(0.3,1), from='npc'),
-        y=grconvertY(c(0,0.7), from='npc'),
-        type='fig')
-
 plot(Boot_EU, enhance=TRUE)
 
-
-
-library(MASS)
-# Color housekeeping
-library(RColorBrewer)
+#
 rf <- colorRampPalette(rev(brewer.pal(11,'Spectral')))
 r <- rf(32)
-
 CIcdfplot(Boot_EU, CI.output = "quantile", xlab="Imidacloprid exposure dose", ylab="Cumulative density function", 
           main = "Emprical and theoretical cumulative distribution of environmental imidacloprid exposure")
 k <- kde2d(Boot_EU$estim$meanlog, Boot_EU$estim$sdlog, n=200)
