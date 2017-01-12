@@ -82,23 +82,6 @@ Ex <- ggplot(dose, aes(x=dose, fill=name))+
 slp_2 <- mcstoc(rnorm, type="VU", -1164.50, 95.79)
 int_2 <- mcstoc(rnorm, type="VU", 4457.95, 239.04)
 
-# T=10
-LD50_10 <- slp_2*log(10)+int_2 
-melt_D <- suppressMessages(melt(LD50_10[,,]))
-melt_D$Var1 <- melt_D$Var2 <-NULL
-melt_D <- cbind("LD50 (10-day)", melt_D)
-colnames(melt_D) <- c("name","dose")
-dose_DnLD <- rbind(dose, melt_D)
-
-ggplot(dose_DnLD, aes(dose, fill = name)) + theme_bw()+
-  scale_x_log10(breaks=c(1,10,100,1000,10000), limits = c(0.01, 100000))+
-  ggtitle("Simulated exposure dose")+
-  theme(legend.title=element_blank()) +
-  theme(axis.text=element_text(size=12), axis.title=element_text(size=12))+
-  ylab("Probability")+xlab(bquote('Dose ('*mu*g~L^-1*')'))+theme(legend.position = c(0.8,0.2))+
-  geom_histogram(alpha = 0.5, aes(y = ..density..), position = 'identity', bins = 50)+
-  geom_vline(df1, mapping=aes(xintercept=data), color= c("green","lightyellow3","orange","red"))
-
 # 0107 Risk
 slp <- mcstoc(rnorm, type="VU", 4.672e-05, 1.804e-06)
 int <- mcstoc(rnorm, type="VU", -6.049e-04, 3.400e-03)
@@ -155,16 +138,19 @@ ecdf_1 <- ddply(ecdf1 , "v", mutate,
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
 ecdf_2 <- ddply(ecdf2 , "v", mutate, 
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
-R1 <- ggplot(ecdf_1, aes(x,1-ecdf, color = v)) + geom_point(size = 0.5) + theme_bw() +
+library(hexbin)
+R1 <- ggplot(ecdf_1, aes(x,1-ecdf)) + geom_point(size = 0.5) + theme_bw() +
+  theme(legend.position = c(0.7,0.6), axis.text=element_text(size=12), axis.title=element_text(size=12))+
+  xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
+  scale_x_continuous(lim=c(0, 100))+
+  geom_hline(yintercept = c(0.5,0.25,0.1,0.05), color= c("green","lightyellow3","orange","red"))+stat_binhex(colour="grey",na.rm=TRUE)+
+  scale_fill_gradientn(colours=c("white","yellow4"),name = "Frequency",na.value=NA)
+R2 <- ggplot(ecdf_2, aes(x,1-ecdf)) + geom_point(size = 0.5) + theme_bw() +
   theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
   xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
   scale_x_continuous(lim=c(0, 100))+
-  geom_hline(yintercept = c(0.5,0.25,0.1,0.05), color= c("green","lightyellow3","orange","red")) 
-R2 <- ggplot(ecdf_2, aes(x,1-ecdf, color = v)) + geom_point(size = 0.5) + theme_bw() +
-  theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
-  xlab('30-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
-  scale_x_continuous(lim=c(0, 100))+
-  geom_hline(yintercept = c(0.5,0.25,0.1,0.05), color= c("green","lightyellow3","orange","red")) 
+  geom_hline(yintercept = c(0.5,0.25,0.1,0.05), color= c("green","lightyellow3","orange","red"))+stat_binhex(colour="grey",na.rm=TRUE)+
+  scale_fill_gradientn(colours=c("white","yellow4"),name = "Frequency",na.value=NA)
 
 #
 probs <- c(0.5, 0.75, 0.9, 0.95)
@@ -191,8 +177,9 @@ R4 <- ggplot(ecdf_2.2, aes(x,ecdf, color = quantile)) + geom_step(size=1) + them
   scale_x_continuous(lim=c(0, 100)) + labs(colour = "Exposue quantile") + scale_colour_manual(values = cols)
 
 #
-x11(8, 11)
+x11(6,9)
 grid.arrange(Ex, arrangeGrob(R1, R2,ncol=2), arrangeGrob(R3, R4,ncol=2), ncol=1)
+
 
 
 # 161220
@@ -294,7 +281,7 @@ sea <- ggplot(Data4, aes(y=rate_ratio, x=day)) + facet_grid(. ~ parameter) + the
   theme(axis.text=element_text(size=12), axis.title=element_text(size=12))
 
 # Find quantile
-md <- slp*v_EU
+md <- slp*Imi
 
 # Parameters
 l0 <- 2000; v<-5000; amax<-0.25; amin<-0.25; s<-0.75; m0<-0.14; b<-500 
