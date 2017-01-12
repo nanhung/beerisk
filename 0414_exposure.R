@@ -2,7 +2,7 @@ if(!require(fitdistrplus)) {
   install.packages("fitdistrplus"); 
   require(fitdistrplus)
 } 
-
+library(hexbin)
 require(fitdistrplus)
 require(gridExtra)
 require(dplyr)
@@ -28,12 +28,16 @@ plot(Boot_EU, enhance=TRUE)
 #
 rf <- colorRampPalette(rev(brewer.pal(11,'Spectral')))
 r <- rf(32)
-CIcdfplot(Boot_EU, CI.output = "quantile", xlab="Imidacloprid exposure dose", ylab="Cumulative density function", 
-          main = "Emprical and theoretical cumulative distribution of environmental imidacloprid exposure")
 k <- kde2d(Boot_EU$estim$meanlog, Boot_EU$estim$sdlog, n=200)
-subplot(image(k, col=r, xlab="meanlog", ylab="sdlog", main="Bootstrapped values of parameters"),x=grconvertX(c(0.3,1), from='npc'),
+x11(9,6)
+CIcdfplot(Boot_EU, CI.output = "quantile", xlab="Imidacloprid exposure dose", ylab="Cumulative density function", 
+          main = "Emprical and theoretical cumulative distribution of environmental imidacloprid",)
+subplot(image(k, col=r, xlab="meanlog", ylab="sdlog", main="Bootstrapped values of parameters"),
+        x=grconvertX(c(0.3,1), from='npc'),
         y=grconvertY(c(0,0.9), from='npc'),
         type='fig')
+hexbinplot(sdlog~meanlog, data=Boot_EU$estim, colramp=rf, trans=log, inv=exp)
+
 
 
 ## mc2d ----
@@ -130,7 +134,7 @@ ecdf_1 <- ddply(ecdf1 , "v", mutate,
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
 ecdf_2 <- ddply(ecdf2 , "v", mutate, 
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
-library(hexbin)
+
 R1 <- ggplot(ecdf_1, aes(x,1-ecdf)) + theme_bw() +
   theme(legend.position = c(0.7,0.6), axis.text=element_text(size=12), axis.title=element_text(size=12))+
   xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
