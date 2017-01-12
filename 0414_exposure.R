@@ -30,6 +30,22 @@ subplot(plot(Boot_EU, enhance=FALSE, col="maroon"),x=grconvertX(c(0.3,1), from='
 
 plot(Boot_EU, enhance=TRUE)
 
+
+
+library(MASS)
+# Color housekeeping
+library(RColorBrewer)
+rf <- colorRampPalette(rev(brewer.pal(11,'Spectral')))
+r <- rf(32)
+
+CIcdfplot(Boot_EU, CI.output = "quantile", xlab="Imidacloprid exposure dose", ylab="Cumulative density function", 
+          main = "Emprical and theoretical cumulative distribution of environmental imidacloprid exposure")
+k <- kde2d(Boot_EU$estim$meanlog, Boot_EU$estim$sdlog, n=200)
+subplot(image(k, col=r, xlab="meanlog", ylab="sdlog", main="Bootstrapped values of parameters"),x=grconvertX(c(0.3,1), from='npc'),
+        y=grconvertY(c(0,0.9), from='npc'),
+        type='fig')
+
+
 ## mc2d ----
 # Specification of uncertainty and variability dimensions
 ndvar(101)
