@@ -13,39 +13,31 @@ require(deSolve)
 library(TeachingDemos)
 
 
+## fitdistrplus
 dat <- read.table("exposure.dat", head = T)
 EU_non0 <- subset(dat, adj>0.1)
 #descdist(EU_non0$adj, boot=1000, obs.col="maroon", boot.col="black")
 fitln_EU <- fitdist(EU_non0$adj,"lnorm",method="mle")
-boot.conc <- bootdist(fitln_EU, niter = 1001)
-summary(boot.conc)
+Boot_EU <- bootdist(fitln_EU, bootmethod="param", niter=1001)
+summary(Boot_EU)
 
 x11(20,20)
-CIcdfplot(boot.conc, CI.output = "quantile", xlab="Imidacloprid exposure dose", ylab="Cumulative density function", 
+CIcdfplot(Boot_EU, CI.output = "quantile", xlab="Imidacloprid exposure dose", ylab="Cumulative density function", 
           main = "Emprical and theoretical cumulative distribution of environmental imidacloprid exposure")
-subplot(plot(boot.conc, enhance=FALSE, col="maroon"),x=grconvertX(c(0.3,1), from='npc'),
+subplot(plot(Boot_EU, enhance=FALSE, col="maroon"),x=grconvertX(c(0.3,1), from='npc'),
         y=grconvertY(c(0,0.7), from='npc'),
         type='fig')
 
-plot(boot.conc, enhance=TRUE)
-
-## fitdistrplus
-meanlog_EU <- fitln_EU$est[1]
-sdlog_EU <- fitln_EU$est[2]
-summary(fitln_EU)
-plot(fitln_EU)
-
-Boot_EU <- bootdist(fitln_EU, bootmethod="param", niter=1001)
+plot(Boot_EU, enhance=TRUE)
 
 ## mc2d ----
 # Specification of uncertainty and variability dimensions
 ndvar(101)
 ndunc(1001)
-
 # Uncertainty on the distribution parameters
-Mean_conso_EU <- mcdata(Boot_EU$estim$meanlog, type="U")
-Sd_conso_EU <- mcdata(Boot_EU$estim$sdlog, type="U")
-conso1_EU <- mcstoc(rlnorm, type="VU", meanlog= Mean_conso_EU, sdlog= Sd_conso_EU, 
+meanlog_EU <- mcdata(Boot_EU$estim$meanlog, type="U")
+sdlog_EU <- mcdata(Boot_EU$estim$sdlog, type="U")
+conso1_EU <- mcstoc(rlnorm, type="VU", meanlog= meanlog_EU, sdlog=sdlog_EU, 
                     rtrunc=TRUE, linf=0, lsup=10000)
 conso0 <- mcdata(0, type="V")
 plot(conso1_EU)
@@ -78,16 +70,10 @@ Ex <- ggplot(dose, aes(x=dose, fill=name))+
   theme_bw()+
   geom_vline(df1, mapping=aes(xintercept=data), color= c("green","lightyellow3","orange","red")) 
 
-# 0109 Risk
-slp_2 <- mcstoc(rnorm, type="VU", -1164.50, 95.79)
-int_2 <- mcstoc(rnorm, type="VU", 4457.95, 239.04)
-
 # 0107 Risk
-slp <- mcstoc(rnorm, type="VU", 4.672e-05, 1.804e-06)
-int <- mcstoc(rnorm, type="VU", -6.049e-04, 3.400e-03)
-Imi <- mcstoc(rlnorm, type="VU", meanlog= Mean_conso_EU, sdlog= Sd_conso_EU,
-              rtrunc=TRUE, linf=0, lsup=10000)
-md <- slp*Imi
+slp <- mcstoc(rnorm, type="U", 4.672e-05, 1.804e-06)
+int <- mcstoc(rnorm, type="U", -6.049e-04, 3.400e-03)
+md <- slp*conso1_EU
 
 # T = 10 day
 Mor_1 <- (1-exp(-md*10)/1)*100
@@ -105,7 +91,7 @@ mormodel <- mc(slp, md, Imi, Mor_2)
 tor<-tornado(mormodel)
 plot(tor)
 
-pre.ecdf <- ecdf(Mor_1[,1,])
+pre.ecdf <- ecdf(Mor_1[1,,])
 curve(1-pre.ecdf(x), col="red", xlim=c(0,100), ylim=c(0,1),
       xlab="10-day% mortality", ylab = "Exceedence risk")
 
@@ -114,7 +100,7 @@ for (i in 2:1001){
   curve(1-post.ecdf(x), col="blue", add=TRUE)
 }
 
-pre.ecdf <- ecdf(Mor_2[,1,])
+pre.ecdf <- ecdf(Mor_2[1,,])
 curve(1-pre.ecdf(x), col="red", xlim=c(0,100), ylim=c(0,1),
       xlab="30-day% mortality", ylab = "Exceedence risk")
 
@@ -139,13 +125,13 @@ ecdf_1 <- ddply(ecdf1 , "v", mutate,
 ecdf_2 <- ddply(ecdf2 , "v", mutate, 
                 ecdf =scale(ecdf,center=min(ecdf),scale=diff(range(ecdf))))
 library(hexbin)
-R1 <- ggplot(ecdf_1, aes(x,1-ecdf)) + geom_point(size = 0.5) + theme_bw() +
+R1 <- ggplot(ecdf_1, aes(x,1-ecdf)) + theme_bw() +
   theme(legend.position = c(0.7,0.6), axis.text=element_text(size=12), axis.title=element_text(size=12))+
   xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
   scale_x_continuous(lim=c(0, 100))+
   geom_hline(yintercept = c(0.5,0.25,0.1,0.05), color= c("green","lightyellow3","orange","red"))+stat_binhex(colour="grey",na.rm=TRUE)+
   scale_fill_gradientn(colours=c("white","yellow4"),name = "Frequency",na.value=NA)
-R2 <- ggplot(ecdf_2, aes(x,1-ecdf)) + geom_point(size = 0.5) + theme_bw() +
+R2 <- ggplot(ecdf_2, aes(x,1-ecdf)) + theme_bw() +
   theme(legend.position = "none", axis.text=element_text(size=12), axis.title=element_text(size=12))+
   xlab('10-day %mortality') + ylab('Exceedance risk') + geom_hline(yintercept = c(0, 1), linetype = "dashed", color = 'black')+
   scale_x_continuous(lim=c(0, 100))+
