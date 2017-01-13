@@ -371,12 +371,9 @@ x <- delsa(model=risk.fun,
            samples=c(10,10,10),method="grid")
 
 # Summary of sensitivity indices of each parameter across parameter space
-print(x)
 library(ggplot2)
 library(reshape2)
 library(tidyr) # long_par
-x11(8, 11)
-plot(x)
 
 # Parameter value vs. Output---
 par <- data.frame(x$X0)
