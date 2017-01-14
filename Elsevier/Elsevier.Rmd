@@ -12,7 +12,7 @@ author:
     affiliation: B Institute of Technology
   - name: Yi-Hsien Cheng
     email: f98622020@ntu.edu.tw
-    affiliation: B Institute of Technology    
+    affiliation: Another University    
   - name: Chung-Min Liao
     email: cmliao@ntu.edu.tw
     affiliation: Another University
@@ -30,6 +30,7 @@ address:
 abstract: |
   This is the abstract.
 
+
   It consists of two paragraphs.
 
 keywords: Honeybees, Population dynamics, Ecotoxicology, Imidacloprid, Probabilistic risk assessment
@@ -39,6 +40,46 @@ output: rticles::elsevier_article
 ---
 
 _Text based on elsarticle sample manuscript, see [http://www.elsevier.com/author-schemas/latex-instructions#elsarticle](http://www.elsevier.com/author-schemas/latex-instructions#elsarticle)_
+
+1. Introduction
+==========================
+
+
+2. Materials and Methods
+==========================
+#### 2.1. Study framework and data
+
+    To assess
+
+Taking into account
+
+#### 2.2. Effect and exposure analysis
+
+
+#### 2.3. Risk characterization
+
+
+#### 2.4. Uncertainty and statistical analysis
+
+
+3. Results
+==========================
+#### 3.1. Dose–mortality assessment
+
+#### 3.2. Predicted environmental exposure 
+
+#### 3.3. Risk predictions
+
+#### 3.4. Sensitivity analysis
+
+
+4. Discussion
+==========================
+
+
+5. Conclusions
+==========================
+
 
 
 The Elsevier article class
