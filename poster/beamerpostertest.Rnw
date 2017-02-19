@@ -1,0 +1,362 @@
+\documentclass[final,t]{beamer}
+\mode<presentation>
+{
+
+  \usetheme{PH}
+}
+% additional settings
+\setbeamerfont{itemize}{size=\normalsize}
+\setbeamerfont{itemize/enumerate body}{size=\normalsize}
+\setbeamerfont{itemize/enumerate subbody}{size=\normalsize}
+
+%additional packages
+\usepackage{times} 
+\usepackage{amsmath,amsthm, amssymb, latexsym}
+\usepackage{exscale} \boldmath 
+\usepackage{booktabs, array}
+\usepackage{rotating} %sideways environment 
+\usepackage[english]{babel}
+\usepackage[latin1]{inputenc}
+\usepackage{xspace}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage{multicol}
+\usepackage{xspace}
+\usepackage{natbib}
+\usepackage{subfig}
+\usepackage[orientation=landscape,size=a0,scale=0.85]{beamerposter}
+\usepackage{Sweave}
+
+% To produce both postscript and pdf graphics, remove the eps and pdf
+% parameters in the next line. Set default plot size to 5 x 3.5 in.
+
+%\listfiles
+%\graphicspath{{figures/}}
+% Display a grid to help align images
+%\beamertemplategridbackground[1cm]
+
+\title{Dynamic modeling the neonicotinoid insecticide (imidacloprid) exposure risk for honeybees population}
+\author[1]{Nan-Hung Hsieh$^1$, Chung-Min Liao$^2$}
+\institute[1]{$^1$Department of Veterinary Integrative Biosciences, Texas \& University, College Station, TX\\
+$^2$Department of Bioenvironmental Systems Engineering, National Taiwan University, Taipei, Taiwan}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+\SweaveOpts{concordance=TRUE}
+<<label=first, include=FALSE, echo=FALSE>>= 
+	sweaveTemplate="beamerpostertest.Rnw"
+	startt<-proc.time()[3]
+	library(xtable)
+	library(plyr)
+	library(ggplot2)
+  library(gridExtra)
+  library(investr)
+	library(data.table)
+	library(fitdistrplus)
+	library(dplyr)
+	library(mc2d)
+	library(EnvStats)
+	library(deSolve)
+	library(reshape2)
+	options(width=80)
+@ 
+
+\begin{frame}[fragile]
+  \begin{columns}[t]
+
+    %-- Column 1 ---------------------------------------------------
+    \begin{column}{0.19\linewidth}
+      %-- Block 1-1
+      \begin{block}{Introduction and Objectives}
+Colony collapse disorder had become an ecology crisis for the honeybee population in recent years. Neonicotinoid insecticide is the suspected risk factor, which may accelerate the bee population decline. In there, the most widely used insecticide in the world is imidacloprid that can harm honeybees through their pollinating of nectar. This study has three main purposes:
+        \begin{itemize}
+          \item To develop an ecotoxicology-based population dynamic model and probabilistic risk assessment framework for honeybee colony.
+          \item To assess the imidacloprid exposure-associated population decline in short, mid, and long-term time period. 
+          \item To build the interactive web application to visualize the population dynamic and better understand the population exposure risk.
+        \end{itemize}
+      \end{block}
+      
+%-- Block 1-2
+      \begin{block}{Study Flow Diagram}
+Published toxicity bioassay of imidacloprid exposure and environmental investigations was be used as the study data.$^[^1^-^4^]$ The regression models were used to reconstruct a time-dependent dose-mortality profile. We also rebuilt the simple differential equation-based model that can be used to simulate the seasonal dynamic of the honeybee population and food storage according to the seasonality parameters.$^[^5^-^8^]$ This study parameterized the imidacloprid toxicity to simulate the toxicity effect to the honeybee population. 
+      \begin{figure}[htb]
+\includegraphics[width=.9\columnwidth]{flowchart.png}
+\end{figure}
+    \end{block}
+    
+%-- Block 1-4
+\begin{block}{Systematic Modeling and Analysis Method}
+R packages used in the mathematical model development and risk analysis\\
+<<label=makdedata, include=FALSE, echo=FALSE>>= 
+datatable<-data.frame(x=1:20, 
+                      y=rnorm(20,mean=50, sd=15), 
+                      type=as.factor(c("Red", "Blue", "Green", "Yellow", "Purple")))
+table<-data.frame(Tool=as.factor(c("desolve", "mc2d","fitdistplus", "sensitivity", "EnvStats")), 
+                      Description=as.factor(c("General solvers for differential equation",
+                                              "Two-dimensional Monte-Carlo simulations",
+                                              "Choosing and fitting of univariate distributions", 
+                                              "Parameter sensitivity test for dynamic model",
+                                              "Simulating of environmental imidacloprid distribution")), 
+                      Version=as.factor(c("1.11-1", "0.1-15", "1.0-6", "1.12.2", "2.1.1")))
+@ 
+\\
+<<label=xtable, results=tex, echo=FALSE>>=
+print(
+xtable(
+table
+),
+latex.environments=c("center"), 
+floating=FALSE, 
+include.rownames=FALSE
+)
+@
+\end{block}
+      %-- Block 3-2
+      \begin{block}{Populaion Dynamic Model}
+        The model includes four compartments that are foragers ($F$), hive bees ($H$), broods ($B$), and food ($f$), respectively can be written as 
+        \\
+        \begin{equation}
+          \frac{\mathrm{dF}}{\mathrm{dt}} \,= R(f,H,F)H-(m+m_d)F
+        \end{equation}
+        \begin{equation}
+          \frac{\mathrm{dH}}{\mathrm{dt}} \,= \phi B(t-\tau)-R(f,H,F)H
+        \end{equation}                
+         \begin{equation}
+          \frac{\mathrm{dB}}{\mathrm{dt}} \,= ls(f,H)-\phi B
+        \end{equation}
+        \begin{equation}
+          \frac{\mathrm{df}}{\mathrm{dt}} \,= cF-\gamma_A(H+F)-\gamma_B B
+        \end{equation}
+        where $m$ is the forager natural death rate, $m_d$ is the imidacloprid-increased forager death rate, $\phi$ is the emergence rate, $\tau$ is the lag time of adult bees emerge from pupation, $c$ is the food collection rate (gram per forager per day), $l$ is the egg laying rate, $\gamma_A$ and $\gamma_B$ are the food consumption rate for adult bees and brood(gram per number of bee per day). In addition, the number of adult bees and broods can be influenced by the recruitment and survival function, respectively. That are
+        \begin{equation}
+          S(f, H)= (\frac{\mathrm{f^2}}{\mathrm{b^2+f^2}})(\frac{\mathrm{H}}{\mathrm{v+H}})
+        \end{equation}
+        \begin{equation}
+          R(H, F, f)=\alpha_m_i_n+\alpha_m_a_x(\frac{\mathrm{b^2}}{\mathrm{b^2+f^2}})-\sigma(\frac{\mathrm{F}}{\mathrm{F+H}})
+        \end{equation}
+        where $b$ is the food impact constant and v is the hive bees impact constant, $\alpha_m_i_n$ and $\alpha_m_a_x$ are the minimum and maximum forager transition rate, and $\sigma$ is the social inhibition rate. The functions reflect that the limited food resources can stimulate hive bees to become foragers at a younger age, causing a precocious onset of foraging, and the way that brood survival declines when food stores are low.
+      \end{block}
+    \end{column}%1
+
+    %-- Column 2 ---------------------------------------------------
+    \begin{column}{0.16\linewidth}
+      \begin{block}{Bioassay and Predictions}
+<<label=makdedata, include=FALSE, echo=FALSE>>= 
+x<-c(0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+y0 <- c(100, 100, 100, 100, 100, 100, 100, 100, 97, 94, 90)
+y025 <- c(100, 97, 97, 94, 94, 94, 94, 88, 88, 88, 88)
+y05 <- c(100, 94, 94, 90, 90, 90, 90, 90, 86, 86, 80)
+y1 <- c(100, 97, 94, 88, 80, 78, 78, 70, 70, 68, 68)
+y2 <- c(100, 90, 78, 70, 70, 70, 70, 62, 52, 42, 40)
+y4 <- c(100, 92, 72, 60, 50, 40, 30, 30, 18, 0.1, 0.1)
+
+df0 <- cbind(x, y0, 0); df025 <- cbind(x, y025, 250); df05 <- cbind(x, y05, 500);
+df1 <- cbind(x, y1, 1000); df2 <- cbind(x, y2, 2000); df4 <- cbind(x, y4, 4000);
+df0<-as.data.frame(df0);df025<-as.data.frame(df025);df05<-as.data.frame(df05)
+df1<-as.data.frame(df1);df2<-as.data.frame(df2);df4<-as.data.frame(df4)
+colnames(df0)<-colnames(df025)<-colnames(df05)<-colnames(df1)<-colnames(df2)<-colnames(df4)<-c("day", "sur", "dos")
+Dat1.list <- list(df0,df025,df05,df1,df2,df4)
+Dat1 <- rbindlist(Dat1.list)
+
+x5 <- c(0, 1, 2, 3, 4, 5, 6, 7, 8)
+y5 <- c(100, 92, 72, 60, 50, 40, 30, 30, 18)
+exp.model5 <- lm(log(y5)~ 0+x5, offset=rep(4.60517, length(x5)))
+
+exp.model0 <- lm(log(y0)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model025 <- lm(log(y025)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model05 <- lm(log(y05)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model1 <- lm(log(y1)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model2 <- lm(log(y2)~ 0+x, offset=rep(4.60517, length(x)))
+exp.model4 <- lm(log(y4)~ 0+x, offset=rep(4.60517, length(x)))
+
+p1 <-ggplot(Dat1, aes(day, sur))+ geom_point(aes(color = factor(dos)))+ scale_y_continuous(lim=c(0, 100))+ theme_bw()+
+  stat_function(fun=function(x)100*exp(-0.004816*x), geom="line", color="gray10") +
+  stat_function(fun=function(x)100*exp(-0.014419*x), geom="line", color="gray10") +
+  stat_function(fun=function(x)100*exp(-0.019719*x), geom="line", color="gray10") +
+  stat_function(fun=function(x)100*exp(-0.043743*x), geom="line", color="gray10") +
+  stat_function(fun=function(x)100*exp(-0.084599*x), geom="line", color="gray10") +
+  stat_function(fun=function(x)100*exp(-0.191161*x), geom="line", color="gray10")+ 
+  ylab("%Survival")+xlab(bquote('Day'))+
+  theme(legend.position = "top", axis.text=element_text(size=14), axis.title=element_text(size=14))+ 
+  labs(color="Dose")+guides(colour = guide_legend(nrow = 1))
+
+P_y0 <- exp(predict(lm(log(y0)~ 0+x, offset=rep(4.60517, length(x)))))
+P_y025 <- exp(predict(lm(log(y025)~ 0+x, offset=rep(4.60517, length(x)))))
+P_y05 <- exp(predict(lm(log(y05)~ 0+x, offset=rep(4.60517, length(x)))))
+P_y1 <- exp(predict(lm(log(y1)~ 0+x, offset=rep(4.60517, length(x)))))
+P_y2 <- exp(predict(lm(log(y2)~ 0+x, offset=rep(4.60517, length(x)))))
+P_y4 <- exp(predict(lm(log(y5)~ 0+x5, offset=rep(4.60517, length(x5)))))
+
+P2_df <- cbind(c(y0,y025,y05,y1,y2,y5) ,c(P_y0,P_y025,P_y05,P_y1,P_y2,P_y4))
+P2_df <- as.data.frame(P2_df)
+dose <- c(rep("0",11),rep("250",11),rep("500",11),rep("1000",11),rep("2000",11),rep("4000",9))
+rownames(P2_df) <- c(1:64)
+P2_df <- cbind(dose, P2_df)
+colnames(P2_df) <- c("Dose", "Observed", "Predicted")
+P2_df[, 1] <- factor(P2_df[, 1], levels = c("0","250","500","1000","2000","4000"))
+
+p2<- ggplot(P2_df, aes(Predicted, Observed)) + geom_point(aes(color = Dose))+ theme_bw()+
+  scale_x_continuous(lim=c(0, 100))+scale_y_continuous(lim=c(0, 100)) + 
+  geom_abline(intercept = 0, cex = 1) +
+  theme(legend.position = "none", axis.text=element_text(size=14), axis.title=element_text(size=14))+ xlab("Predicted %survial")+ylab('Observed %survial')
+h_lif <- c(log(2)/(-(coef(summary(exp.model4))[, 1])),
+           log(2)/(-(coef(summary(exp.model2))[, 1])),
+           log(2)/(-(coef(summary(exp.model1))[, 1])),
+           log(2)/(-(coef(summary(exp.model05))[, 1])))
+h_dos <- c(4000,2000,1000,500)
+h_df <- data.frame(h_lif,h_dos)
+mod3 <- lm(h_dos~log(h_lif))
+p3 <- ggplot(h_df, aes(h_lif, h_dos)) + geom_point() + theme_bw() +
+  ylab(bquote('LD50 ('*mu*g~L^-1*')'))+xlab(bquote('Day'))+ 
+  stat_smooth(method=lm, formula = y~log(x), color="gray10")+
+  theme(axis.text=element_text(size=14), axis.title=element_text(size=14))+
+  labs(color="Dose")
+mor.x<-c(0, 250, 500, 1000, 2000, 4000)
+mor.y<-c(0.004816, 0.014419, 0.019719, 0.043743, 0.084599, 0.191161)
+mor.y.sd<-c(coef(summary(exp.model0))[, 2],
+             coef(summary(exp.model025))[, 2],
+             coef(summary(exp.model05))[, 2],
+             coef(summary(exp.model1))[, 2],
+             coef(summary(exp.model2))[, 2],
+             coef(summary(exp.model5))[, 2])
+
+Dat4 <- data.frame(mor.x, mor.y, mor.y.sd)
+mod4 <- lm(mor.y~ mor.x)
+
+p4 <- ggplot(Dat4, aes(mor.x, mor.y)) + geom_point() + stat_smooth(method=lm, formula = y~x, color="gray10")+ theme_bw() +
+  ylab("Mortality rate (per day)")+xlab(bquote('Dose ('*mu*g~L^-1*')'))+
+  theme(axis.text=element_text(size=14), axis.title=element_text(size=14))+
+  geom_errorbar(aes(x = mor.x, ymin = mor.y-mor.y.sd, ymax =  mor.y+mor.y.sd, width = .5))
+@
+
+<<label=fig1plot,include=TRUE, echo=FALSE>>= 
+print(p1)
+@ 
+        \begin{figure}[htb]
+<<label=fig1, fig=TRUE, echo=FALSE, include=FALSE>>=
+<<fig1plot>>
+@ 
+        \includegraphics[width=.8\columnwidth]{beamerpostertest-fig1}
+        \end{figure}
+<<label=fig2plot,include=FALSE, echo=FALSE>>= 
+print(p2)
+@ 
+        \begin{figure}[htb]
+<<label=fig2, fig=TRUE, echo=FALSE, include=FALSE>>=
+<<fig2plot>>
+@ 
+        \includegraphics[width=.8\columnwidth]{beamerpostertest-fig2}
+        \end{figure}
+        The dynamic model predicted the time-dependent honeybees survival probability under different imidacloprid exposure doses. The calibration results are showing the high precision ($r^2$ = 0.99) in model performance.
+        
+        
+<<label=fig3plot,include=FALSE, echo=FALSE>>= 
+print(p3)
+@ 
+        \begin{figure}[htb]
+<<label=fig3, fig=TRUE, echo=FALSE, include=FALSE>>=
+<<fig3plot>>
+@ 
+        \includegraphics[width=.8\columnwidth]{beamerpostertest-fig3}
+        \end{figure}
+        
+<<label=fig4plot,include=FALSE, echo=FALSE>>= 
+print(p4)
+@ 
+        \begin{figure}[htb]
+<<label=fig4, fig=TRUE, echo=FALSE, include=FALSE>>=
+<<fig4plot>>
+@ 
+        \includegraphics[width=.8\columnwidth]{beamerpostertest-fig4}
+        \end{figure}
+        Time-dependent LD50 with 95\% confidence interval to represent the exposure threshold and uncertainty. The dose-response profile for imidacloprid exposure-associated mortality rate was constructed to use in risk assessment.
+      \end{block}
+    \end{column}%2
+
+    %-- Column 3 ---------------------------------------------------
+    \begin{column}{0.24\linewidth}
+      %-- Block 3-1
+      \begin{block}{Predicted Environmental Exposure}
+      
+      \begin{figure}[htb]
+      \includegraphics[width=.9\columnwidth]{fig3}
+      \end{figure}
+      The result of the fitting of a lognormal distribution to the environmental imidacloprid investigation dataset. For each value of the data, the cumulative density function is plotted to compare the empirical and theoretical results with 95 \% CI. A parametric bootstrap was used for the uncertainty around the meanlog and sdlog of the fitted lognormal distribution for the dataset.
+      \end{block}
+
+      %-- Block 3-2
+      \begin{block}{Risk assessment for short- and mid-term exposure}
+      \begin{figure}[htb]
+      \includegraphics[width=.9\columnwidth]{fig4}
+      \end{figure}
+      Estimated risk of imidacloprid exposure-associated \%mortality of honeybees at exceedance probabilities of 0.5, 0.25, 0.1, 0.05, respectively, representing the conditions from medium to high exposure levels. Both simulating exposure and effect conditions were considered the variability and uncertainty to calculate the population risk. 
+      \end{block}      
+    \end{column}
+    
+    %4
+    \begin{column}{0.38\linewidth}
+      %-- Block 4-1
+      \begin{block}{Risk assessment for long-term exposure}
+      \begin{figure}[htb]
+      \includegraphics[width=.95\columnwidth]{fig5}
+      \end{figure}
+      Predicted results of seasonal variation of parameter rate ratios with 95 \% CI for food collection (c), egg laying (l), and mortality (m). According to the equilibrium solution of dynamic model, this study finds that the current imidacloprid exposure can affect the honeybees population in two time periods of the year, from late winter to early spring and autumn period. The food collection is also an important factor, which can affect the bee population in the winter. By using the dynamic simulation with predicted parameters, the bee population will go extinction when the exposure dose of imidacloprid exceed 2500 $\mu$g L$^-^1$. The user interface was successfully developed to visualize the population dynamics and find the critical threshold.
+      \end{block}
+      
+%-- Block 4-2
+      \begin{block}{Sensitivity Analysis}
+      \begin{figure}[htb]
+      \includegraphics[width=.95\columnwidth]{fig6}
+      \end{figure}
+      Distributed evaluation of local sensitivity analysis (DELSA) tests the food collection (c), natural mortality (m), and imidacloprid-increased mortality rate (m$_d$) across the parameter space. The result shows that imidacloprid can determine the honeybees extinction in our estimated range. However, food collection plays the most important role to determine the extinction of bee colony.
+      \end{block} 
+      
+%-- Block 4-3
+      \begin{block}{Conclusions}
+        \begin{itemize}
+          \item This study established the population risk assessment framework by considering the uncertainty and variability in model predictions.
+          \item According to the current results of the risk evaluation, the realistic in-field exposure dose distribution of imidacloprid can only impact the honeybees population slightly.
+          \item We hope that our constructed interactive web application can help people better understand the toxicity effect on honey bee population in risk communication.
+        \end{itemize}
+		\end{block}
+
+      \begin{block}{Acknowledgements}
+      The authors appreciate the useful discussion and suggestion from the members of Biosystem Modeling and Control Lab in National Taiwan University.
+
+		\end{block}
+
+%-- Block 4-4
+ \begin{columns}[onlytextwidth, t]
+\column{0.62\linewidth}
+      \begin{block}{Bibliography}
+        \begin{itemize}
+          \item 1. DEFRA (2007) Project no.PS2322.
+          \item 2. Cresswell (2011) Ecotoxicology. 20:149-57.
+          \item 3. Greenpeace (2014) The Bees' Burden.
+          \item 4. Greenpeace (2014) A Toxic Eden.
+          \item 5. Perry et al. (2015) PNAS. 112:3427-32.
+          \item 6. Henry et al. (2016) Apidologie. doi:10.1007/s13592-016-0476-0 
+          \item 7. Russell et al.(2013) Ecol Model. 265:158-169.
+          \item 8. Khoury et al.(2013) PLOS ONE. 8: e59084. 
+        \end{itemize}
+		\end{block}
+
+\column{0.36\linewidth}
+    \begin{block}{QR code}
+    The poster pdf and interactive user interface (UI) are show as following 
+        \begin{figure}[h]
+ \centering
+  \subfloat[Poster pdf\label{fig:a}]{\includegraphics[height=4cm,width=4cm]{UI.png}}\qquad
+  \subfloat[UI\label{fig:b}]{\includegraphics[height=4cm,width=4cm]{UI.png}}
+\end{figure}
+    \end{block}
+\end{columns}
+% 
+    \end{column}%3
+  \end{columns}
+
+\end{frame}
+\end{document}
+
+
